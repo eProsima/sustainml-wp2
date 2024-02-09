@@ -36,6 +36,10 @@ def signal_handler(sig, frame):
 def task_callback(ml_model, node_status, hw):
     # Callback implementation here
     print (ml_model.model())
+    # include short delay for demos
+    time.sleep(2)
+    # populate output
+    hw.hw_description("HW description example here")
 
 # Main workflow routine
 def run():
