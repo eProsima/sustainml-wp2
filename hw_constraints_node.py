@@ -13,7 +13,7 @@
 # limitations under the License.
 """SustainML HW Resources Provider Node Implementation."""
 
-from sustainml_py.nodes.HardwareResourcesNode import HardwareResourcesNode
+from sustainml_py.nodes.HardwareConstraintsNode import HardwareConstraintsNode
 
 # Manage signaling
 import signal
@@ -26,22 +26,22 @@ running = False
 # Signal handler
 def signal_handler(sig, frame):
     print("\nExiting")
-    HardwareResourcesNode.terminate()
+    HardwareConstraintsNode.terminate()
     global running
     running = False
 
 # User Callback implementation
-# Inputs: ml_model, app_requirements, hw_constraints
-# Outputs: node_status, hw
-def task_callback(ml_model, app_requirements,  hw_constraints, node_status, hw):
+# Inputs: user_input
+# Outputs: node_status, hw_constraints
+def task_callback(user_input, node_status, hw_constraints):
 
     # Callback implementation here
 
-    hw.hw_description("This is a HW description")
+    hw_constraints.max_memory_footprint(100)
 
 # Main workflow routine
 def run():
-    node = HardwareResourcesNode(callback=task_callback)
+    node = HardwareConstraintsNode(callback=task_callback)
     global running
     running = True
     node.spin()
