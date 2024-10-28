@@ -14,14 +14,27 @@
 """SustainML HW Resources Provider Node Implementation."""
 
 from sustainml_py.nodes.HardwareResourcesNode import HardwareResourcesNode
-
-# Manage signaling
+import onnxruntime
 import signal
 import threading
 import time
+import torch
+import typer
+import upmem_llm_framework as upmem_layers
 
+app = typer.Typer(callback=upmem_layers.initialize_profiling_options)
 # Whether to go on spinning or interrupt
 running = False
+
+# ONNX Model-based testing class
+class ONNXModel(torch.nn.Module):
+    def __init__(self, onnx_model_path):
+        super(ONNXModel, self).__init__()
+        self.onnx_session = onnxruntime.InferenceSession(onnx_model_path)
+
+    def forward(self, inputs):
+        # TODO - Make something intelligent to determine the forward method
+        return torch.nn.functional.softmax(inputs, dim=0)
 
 # Signal handler
 def signal_handler(sig, frame):
@@ -35,9 +48,33 @@ def signal_handler(sig, frame):
 # Outputs: node_status, hw
 def task_callback(ml_model, app_requirements,  hw_constraints, node_status, hw):
 
-    # Callback implementation here
+    upmem_layers.profiler_init()
 
-    hw.hw_description("This is a HW description")
+    # Instantiate the ONNX predictor model
+    onnx_model = ONNXModel(ml_model.model_path())
+    my_tensor = torch.rand(100)
+
+    layer_mapping = {
+        "input_layernorm": "PIM-AI-1chip",
+        "q_proj": "PIM-AI-1chip",
+        "k_proj": "PIM-AI-1chip",
+        "rotary_emb": "PIM-AI-1chip",
+        "v_proj": "PIM-AI-1chip",
+        "o_proj": "PIM-AI-1chip",
+        "output_layernorm": "PIM-AI-1chip",
+        "gate_proj": "PIM-AI-1chip",
+        "up_proj": "PIM-AI-1chip",
+        "down_proj": "PIM-AI-1chip",
+        "norm": "PIM-AI-1chip",
+        "lm_head": "PIM-AI-1chip",
+    }
+
+    upmem_layers.profiler_start(layer_mapping)
+    onnx_model.forward(my_tensor)
+    upmem_layers.profiler_end()
+    hw.hw_description("PIM-AI-1chip")
+    hw.power_consumption(upmem_layers.profiler_get_power_consumption())
+    hw.latency(upmem_layers.profiler_get_latency())
 
 # Main workflow routine
 def run():
