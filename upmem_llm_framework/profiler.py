@@ -656,3 +656,14 @@ class UPM_Profiler:
         func_profile.exec_nums += 1
         func_profile.exec_time += cur_exec_time
         self.functions[function.__name__] = func_profile
+
+    def get_latency(self):
+        return (self.inference_time / 1e9)
+
+    def get_power_consumption(self):
+        sum_energy = 0
+        if self.summarization_time == 0:
+            return 0
+        for key, energy in self.sum_energy.items():
+            sum_energy += energy / 1e9
+        return sum_energy / 1e3 / self.summarization_time / 1e9

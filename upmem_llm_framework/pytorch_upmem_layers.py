@@ -344,3 +344,9 @@ def profiler_start(
 
 def profiler_end():
     profiler.end()
+
+def profiler_get_power_consumption():
+    return profiler.get_power_consumption()
+
+def profiler_get_latency():
+    return profiler.get_latency()
