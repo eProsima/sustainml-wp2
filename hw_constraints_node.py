@@ -16,6 +16,9 @@
 from sustainml_py.nodes.HardwareConstraintsNode import HardwareConstraintsNode
 
 # Manage signaling
+import ctypes
+import json
+import numpy as np
 import signal
 import threading
 import time
@@ -35,9 +38,29 @@ def signal_handler(sig, frame):
 # Outputs: node_status, hw_constraints
 def task_callback(user_input, node_status, hw_constraints):
 
-    # Callback implementation here
+    # Default values
+    hw_req = "PIM_AI_1chip"
+    mem_footprint = 100
 
-    hw_constraints.max_memory_footprint(100)
+    # Check if extra data has been sent
+    if user_input.extra_data().size() != 0:
+        buffer = ctypes.c_ubyte * user_input.extra_data().size()
+        buffer = buffer.from_address(int(user_input.extra_data().get_buffer()))
+        extra_data = np.frombuffer(buffer, dtype=np.uint8)
+        extra_data_str = extra_data.tobytes().decode('utf-8', errors='ignore')
+        try:
+            json_obj = json.loads(extra_data_str)
+            if json_obj is not None:
+                mem_footprint = int(json_obj["max_memory_footprint"])
+                hw_req = json_obj["hardware_required"]
+        except:
+            print("Extra data is not a valid JSON object, using default values")
+
+    # TODO parse other possible data hidden in the extra_data field, if any
+    # TODO populate the hw_constraints object with the required data
+
+    hw_constraints.max_memory_footprint(mem_footprint)
+    hw_constraints.hardware_required([hw_req])
 
 # Main workflow routine
 def run():
