@@ -18,6 +18,7 @@ import onnxruntime
 import signal
 import threading
 import time
+import json
 import torch
 import typer
 import upmem_llm_framework as upmem_layers
@@ -76,9 +77,28 @@ def task_callback(ml_model, app_requirements,  hw_constraints, node_status, hw):
     hw.power_consumption(upmem_layers.profiler_get_power_consumption())
     hw.latency(upmem_layers.profiler_get_latency())
 
+# User Configuration Callback implementation
+# Inputs: req
+# Outputs: res
+def configuration_callback(req, res):
+
+    # Callback for configuration implementation here
+
+    # Dummy JSON configuration and implementation
+    dummy_config = {
+        "param1": "value1",
+        "param2": "value2",
+        "param3": "value3"
+    }
+    res.configuration(json.dumps(dummy_config))
+    res.node_id(req.node_id())
+    res.transaction_id(req.transaction_id())
+    res.success(True)
+    res.err_code(0) # 0: No error || 1: Error
+
 # Main workflow routine
 def run():
-    node = HardwareResourcesNode(callback=task_callback)
+    node = HardwareResourcesNode(callback=task_callback, service_callback=configuration_callback)
     global running
     running = True
     node.spin()
