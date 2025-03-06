@@ -25,10 +25,8 @@ import threading
 import time
 import json
 import torch
-import typer
 import yaml
 
-app = typer.Typer(callback=upmem_layers.initialize_profiling_options)
 # Whether to go on spinning or interrupt
 running = False
 
@@ -70,59 +68,8 @@ def signal_handler(sig, frame):
 # Outputs: node_status, hw
 def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
-    # upmem_layers.profiler_init()
-
-    # # Instantiate the ONNX predictor model
-    # onnx_model = ONNXModel(ml_model.model_path())
-    # my_tensor = torch.rand(1, 3, 640, 640, dtype=torch.float32)
-
-    # layer_mapping = {
-    #     "input_layernorm": "PIM-AI-1chip",
-    #     "q_proj": "PIM-AI-1chip",
-    #     "k_proj": "PIM-AI-1chip",
-    #     "rotary_emb": "PIM-AI-1chip",
-    #     "v_proj": "PIM-AI-1chip",
-    #     "o_proj": "PIM-AI-1chip",
-    #     "output_layernorm": "PIM-AI-1chip",
-    #     "gate_proj": "PIM-AI-1chip",
-    #     "up_proj": "PIM-AI-1chip",
-    #     "down_proj": "PIM-AI-1chip",
-    #     "norm": "PIM-AI-1chip",
-    #     "lm_head": "PIM-AI-1chip",
-    # }
-
-    # upmem_layers.profiler_start(layer_mapping)
-    # onnx_model.forward(my_tensor)
-    # upmem_layers.profiler_end()
-    # hw.hw_description("PIM-AI-1chip")
-    # hw.power_consumption(upmem_layers.profiler_get_power_consumption())
-    # hw.latency(upmem_layers.profiler_get_latency())
-    # print(f"Power Consumption: {upmem_layers.profiler_get_power_consumption():.8f} W")
-    # print(f"Latency: {upmem_layers.profiler_get_latency()} ms")
-
+    upmem_layers.initialize_profiling_options(simulation=True)
     upmem_layers.profiler_init()
-
-    hf_token = "token"
-
-    # model = transformers.AutoModelForCausalLM.from_pretrained(
-    #     "lmsys/vicuna-7b-v1.1", token=hf_token
-    # )
-    # tokenizer = transformers.AutoTokenizer.from_pretrained(
-    #     "lmsys/vicuna-7b-v1.1", token=hf_token
-    # )
-
-    model = transformers.AutoModelForCausalLM.from_pretrained(
-        ml_model.model(), token=hf_token
-    )
-    tokenizer = transformers.AutoTokenizer.from_pretrained(
-        ml_model.model(), token=hf_token
-    )
-
-    if tokenizer.eos_token is None:
-        tokenizer.eos_token = "<|endoftext|>"
-
-    tokenizer.pad_token = tokenizer.eos_token
-    model.config.pad_token_id = tokenizer.eos_token_id
 
     layer_mapping = {
         "input_layernorm": "PIM-AI-1chip",
@@ -139,33 +86,65 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
         "lm_head": "PIM-AI-1chip",
     }
 
+    # Use model path if available
+    if ml_model.model_path() != "":
+        print("Using model path")
+        # Instantiate the ONNX predictor model
+        onnx_model = ONNXModel(ml_model.model_path())
+        my_tensor = torch.rand(1, 3, 640, 640, dtype=torch.float32)
 
-    prompt = "How to prepare coffee?"
+        upmem_layers.profiler_start(layer_mapping)
+        onnx_model.forward(my_tensor)
+        upmem_layers.profiler_end()
 
-    inputs = tokenizer(prompt, return_tensors="pt",
-                       padding=True, truncation=True,
-                       return_token_type_ids=False)
+    # Use Hugging Face model
+    else:
+        try:
+            hf_token = "token"  # WIP - Token of Javier Gil, further change
 
-    print(inputs.data["input_ids"][0].shape)
+            model = transformers.AutoModelForCausalLM.from_pretrained(  # Only works with LLM models
+                ml_model.model(), token=hf_token
+            )
+            tokenizer = transformers.AutoTokenizer.from_pretrained(
+                ml_model.model(), token=hf_token
+            )
 
-    model.eval()  # Put model in evaluation / inference mode
+            if tokenizer.eos_token is None:
+                tokenizer.eos_token = "<|endoftext|>"
 
-    print(model)
-    print()
+            tokenizer.pad_token = tokenizer.eos_token
+            model.config.pad_token_id = tokenizer.eos_token_id
 
-    upmem_layers.profiler_start(layer_mapping)
-    # In case we want to time the original execution (comment out profiler_start)
-    # start = time.time_ns()
-    gen_tokens = model.generate(
-        inputs.input_ids, do_sample=True, temperature=0.9, min_length=64, max_length=64
-    )
-    # print ( (time.time_ns() - start)/1e6)
-    upmem_layers.profiler_end()
+            prompt = "How to prepare coffee?"
+            inputs = tokenizer(prompt, return_tensors="pt",
+                            padding=True, truncation=True,
+                            return_token_type_ids=False)
 
-    gen_text = tokenizer.batch_decode(
-        gen_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False
-    )[0]
-    print(gen_text)
+            print(inputs.data["input_ids"][0].shape)
+
+            model.eval()  # Put model in evaluation / inference mode
+
+            print(model)
+            print()
+
+            upmem_layers.profiler_start(layer_mapping)
+            # In case we want to time the original execution (comment out profiler_start)
+            # start = time.time_ns()
+            gen_tokens = model.generate(
+                inputs.input_ids, do_sample=True, temperature=0.9, min_length=64, max_length=64
+            )
+            # print ( (time.time_ns() - start)/1e6)
+            upmem_layers.profiler_end()
+
+            gen_text = tokenizer.batch_decode(
+                gen_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False
+            )[0]
+            print(gen_text)
+
+        except Exception as e:
+            print(f"Error testing model on hardware: {e}")
+            print(f"Please provide different model")
+            return
 
     hw.hw_description("PIM-AI-1chip")
     hw.power_consumption(upmem_layers.profiler_get_power_consumption())
@@ -180,25 +159,31 @@ def configuration_callback(req, res):
 
     # Callback for configuration implementation here
     if req.configuration() == "hardwares":
-        res.node_id(req.node_id())
-        res.transaction_id(req.transaction_id())
+        try:
+            res.node_id(req.node_id())
+            res.transaction_id(req.transaction_id())
 
-        # Retrieve Hardwares from sim_architectures.yaml
-        with open(os.path.dirname(__file__)+'/upmem_llm_framework/sim_architectures.yaml', 'r') as file:
-            architectures = yaml.safe_load(file)
+            # Retrieve Hardwares from sim_architectures.yaml
+            with open(os.path.dirname(__file__)+'/upmem_llm_framework/sim_architectures.yaml', 'r') as file:
+                architectures = yaml.safe_load(file)
 
-        # Extract the hardware names
-        hardware_names = list(architectures.keys())
+            # Extract the hardware names
+            hardware_names = list(architectures.keys())
 
-        if not hardware_names:
+            if not hardware_names:
+                res.success(False)
+                res.err_code(1) # 0: No error || 1: Error
+            else:
+                res.success(True)
+                res.err_code(0) # 0: No error || 1: Error
+            sorted_hardware_names = ', '.join(sorted(hardware_names))
+            print(f"Available Hardwares: {sorted_hardware_names}")
+            res.configuration(json.dumps(dict(hardwares=sorted_hardware_names)))
+
+        except Exception as e:
+            print(f"Error getting types of hardwares from request: {e}")
             res.success(False)
             res.err_code(1) # 0: No error || 1: Error
-        else:
-            res.success(True)
-            res.err_code(0) # 0: No error || 1: Error
-        sorted_hardware_names = ', '.join(sorted(hardware_names))
-        print(f"Available Hardwares: {sorted_hardware_names}")
-        res.configuration(json.dumps(dict(hardwares=sorted_hardware_names)))
 
     else:
         # Dummy JSON configuration and implementation
