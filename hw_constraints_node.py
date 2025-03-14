@@ -62,9 +62,29 @@ def task_callback(user_input, node_status, hw_constraints):
     hw_constraints.max_memory_footprint(mem_footprint)
     hw_constraints.hardware_required([hw_req])
 
+# User Configuration Callback implementation
+# Inputs: req
+# Outputs: res
+def configuration_callback(req, res):
+
+    # Callback for configuration implementation here
+
+    # Dummy JSON configuration and implementation
+    dummy_config = {
+        "param1": "value1",
+        "param2": "value2",
+        "param3": "value3"
+    }
+    res.configuration(json.dumps(dummy_config))
+    res.node_id(req.node_id())
+    res.transaction_id(req.transaction_id())
+    res.success(True)
+    res.err_code(0) # 0: No error || 1: Error
+
+
 # Main workflow routine
 def run():
-    node = HardwareConstraintsNode(callback=task_callback)
+    node = HardwareConstraintsNode(callback=task_callback, service_callback=configuration_callback)
     global running
     running = True
     node.spin()
