@@ -100,7 +100,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     # Use Hugging Face model
     else:
         try:
-            hf_token = "token"  # WIP - Token of Javier Gil, further change
+            hf_token = "token"  # WIP - Please change "token" to your personal token of HF
 
             model = transformers.AutoModelForCausalLM.from_pretrained(  # Only works with LLM models
                 ml_model.model(), token=hf_token
