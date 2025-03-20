@@ -197,7 +197,7 @@ class UPM_Conv1D(transformers.pytorch_utils.Conv1D):
         context = get_context()
         profiler.forward_start(x.shape)
         x = super().forward(x)
-        profiler.forward_end(x.shape, context)
+        profiler.forward_end(x.shape, context, layer_obj=self)
         return x
 
 
