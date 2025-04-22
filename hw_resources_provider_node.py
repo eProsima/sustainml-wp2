@@ -68,6 +68,8 @@ def signal_handler(sig, frame):
 # Outputs: node_status, hw
 def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
+    global hf_token
+
     upmem_layers.initialize_profiling_options(simulation=True)
     upmem_layers.profiler_init()
 
@@ -100,17 +102,24 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     # Use Hugging Face model
     else:
         try:
-            hf_token = "token"  # WIP - Please change "token" to your personal token of HF
+            print("Using Hugging Face model")
+            hf_token = None
+            extra_data_bytes = hw_constraints.extra_data()
+            if extra_data_bytes:
+                extra_data_str = ''.join(chr(b) for b in extra_data_bytes)
+                extra_data_dict = json.loads(extra_data_str)
+                if "hf_token" in extra_data_dict:
+                    hf_token = extra_data_dict["hf_token"]
 
             model = transformers.AutoModelForCausalLM.from_pretrained(  # Only works with LLM models
-                ml_model.model(), token=hf_token
+                ml_model.model(), token=hf_token, trust_remote_code=True
             )
             tokenizer = transformers.AutoTokenizer.from_pretrained(
                 ml_model.model(), token=hf_token
             )
 
             if tokenizer.eos_token is None:
-                tokenizer.eos_token = "<|endoftext|>"
+                tokenizer.eos_token = "<|endoftext|>"  # noqa: E501 - using required token for model
 
             tokenizer.pad_token = tokenizer.eos_token
             model.config.pad_token_id = tokenizer.eos_token_id
@@ -127,21 +136,22 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             print(model)
             print()
 
+            # noinspection PyUnresolvedReferences
             upmem_layers.profiler_start(layer_mapping)
             # In case we want to time the original execution (comment out profiler_start)
             # start = time.time_ns()
             gen_tokens = model.generate(
                 inputs.input_ids, do_sample=True, temperature=0.9, min_length=64, max_length=64
             )
-            # print ( (time.time_ns() - start)/1e6)
+            # noinspection PyUnresolvedReferences
             upmem_layers.profiler_end()
 
             gen_text = tokenizer.batch_decode(
                 gen_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False
             )[0]
-            print(gen_text)
-
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"Error testing model on hardware: {e}")
             print(f"Please provide different model")
             return

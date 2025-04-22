@@ -53,6 +53,9 @@ def task_callback(user_input, node_status, hw_constraints):
             if json_obj is not None:
                 mem_footprint = int(json_obj["max_memory_footprint"])
                 hw_req = json_obj["hardware_required"]
+                hf_token = json_obj["hf_token"]
+                encoded_data = json.dumps({"hf_token": hf_token}).encode("utf-8")
+                hw_constraints.extra_data(encoded_data)
         except:
             print("Extra data is not a valid JSON object, using default values")
 
