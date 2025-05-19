@@ -56,6 +56,148 @@ class ONNXModel(torch.nn.Module):
     #     # TODO - Make something intelligent to determine the forward method
     #     return torch.nn.functional.softmax(inputs, dim=0)
 
+def load_any_model(model_name, hf_token=None, **kwargs):
+
+    model = None
+    available_model_classes = [
+        ("CausalLM", transformers.AutoModelForCausalLM, {"ignore_mismatched_sizes": True}),
+        ("Seq2Seq", transformers.AutoModelForSeq2SeqLM, {}),
+        ("TokenClassification", transformers.AutoModelForTokenClassification, {}),
+        ("SequenceClassification", transformers.AutoModelForSequenceClassification, {}),
+        ("PreTraining", transformers.AutoModelForPreTraining, {}),
+        ("MaskedLM", transformers.AutoModelForMaskedLM, {}),
+        ("MaskGeneration", transformers.AutoModelForMaskGeneration, {}),
+        ("MultipleChoice", transformers.AutoModelForMultipleChoice, {}),
+        ("NextSentencePrediction", transformers.AutoModelForNextSentencePrediction, {}),
+        ("QuestionAnswering", transformers.AutoModelForQuestionAnswering, {}),
+        ("TextEncoding", transformers.AutoModelForTextEncoding, {}),
+        ("DepthEstimation", transformers.AutoModelForDepthEstimation, {}),
+        ("ImageClassification", transformers.AutoModelForImageClassification, {}),
+        ("VideoClassification", transformers.AutoModelForVideoClassification, {}),
+        ("KeypointDetection", transformers.AutoModelForKeypointDetection, {}),
+        ("MaskedImageModeling", transformers.AutoModelForMaskedImageModeling, {}),
+        ("ObjectDetection", transformers.AutoModelForObjectDetection, {}),
+        ("ImageSegmentation", transformers.AutoModelForImageSegmentation, {}),
+        ("ImageToImage", transformers.AutoModelForImageToImage, {}),
+        ("SemanticSegmentation", transformers.AutoModelForSemanticSegmentation, {}),
+        ("InstanceSegmentation", transformers.AutoModelForInstanceSegmentation, {}),
+        ("UniversalSegmentation", transformers.AutoModelForUniversalSegmentation, {}),
+        ("ZeroShotImageClassification", transformers.AutoModelForZeroShotImageClassification, {}),
+        ("ZeroShotObjectDetection", transformers.AutoModelForZeroShotObjectDetection, {}),
+        ("AudioClassification", transformers.AutoModelForAudioClassification, {}),
+        ("AudioFrameClassification", transformers.AutoModelForAudioFrameClassification, {}),
+        ("CTC", transformers.AutoModelForCTC, {}),
+        ("SpeechSeq2Seq", transformers.AutoModelForSpeechSeq2Seq, {}),
+        ("AudioXVector", transformers.AutoModelForAudioXVector, {}),
+        ("TextToSpectrogram", transformers.AutoModelForTextToSpectrogram, {}),
+        ("TextToWaveform", transformers.AutoModelForTextToWaveform, {}),
+        ("TableQuestionAnswering", transformers.AutoModelForTableQuestionAnswering, {}),
+        ("DocumentQuestionAnswering", transformers.AutoModelForDocumentQuestionAnswering, {}),
+        ("VisualQuestionAnswering", transformers.AutoModelForVisualQuestionAnswering, {}),
+        ("Vision2Seq", transformers.AutoModelForVision2Seq, {}),
+        ("ImageTextToText", transformers.AutoModelForImageTextToText, {}),
+        ("VitPose", transformers.VitPoseForPoseEstimation, {}),
+        ("Generic", transformers.AutoModel, {})
+    ]
+
+    for label, model_class, extra_args in available_model_classes:
+        try:
+            model = model_class.from_pretrained(
+                model_name,
+                token=hf_token,
+                trust_remote_code=True,
+                **{**extra_args, **kwargs}
+            )
+            print(f"[OK] Model loaded as {label}")
+            break
+        except Exception as e:
+            print(f"[WARN] Could not load model as {label}: {e}")
+
+    if model is None:
+        raise Exception(f"Model {model_name} is not currently supported")
+
+    available_token_classes = [
+        ("Token", transformers.AutoTokenizer, {}),
+        ("Image", transformers.AutoImageProcessor, {"use_fast": True}),
+        ("FeatureExtractor", transformers.AutoFeatureExtractor, {}),
+        ("Processor", transformers.AutoProcessor, {})
+    ]
+
+    for label, token_class, extra_args in available_token_classes:
+        try:
+            tokenizer = token_class.from_pretrained(
+                model_name,
+                token=hf_token,
+                trust_remote_code=True,
+                **{**extra_args, **kwargs}
+            )
+            print(f"[OK] Token loaded as {label}")
+            break
+        except Exception as e:
+            print(f"[WARN] Could not load token as {label}: {e}")
+
+    if tokenizer is None:
+        raise Exception(f"Error initializing tokenizer for model {model_name}: {e}")
+
+    input = None
+    try:
+        # Text
+        if label == "Token":
+            if tokenizer.eos_token is None:
+                tokenizer.eos_token = "<|endoftext|>"
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+            text = "How to prepare coffee?"
+            input = tokenizer(
+                text,
+                return_tensors="pt",
+                padding=True,
+                truncation=True
+            )
+
+        # Image or Video
+        elif label == "Image" or label == "FeatureExtractor" or "image" in tokenizer.__class__.__name__.lower():
+            from PIL import Image
+            import numpy as np
+
+            # Check for video case based on tokenizer class name containing "video"
+            if "video" in tokenizer.__class__.__name__.lower():
+                # Video case: create a list of 16 frames (all white images)
+                arr = np.ones((224, 224, 3), dtype=np.uint8) * 255
+                img = Image.fromarray(arr)
+                video_frames = [img for _ in range(16)]
+                input = tokenizer(
+                    images=video_frames,
+                    return_tensors="pt",
+                )
+            else:
+                # Image case: create a single white image
+                arr = np.ones((224, 224, 3), dtype=np.uint8) * 255
+                img = Image.fromarray(arr)
+                input = tokenizer(
+                    images=img,
+                    return_tensors="pt",
+                )
+            input = {k: v.to(torch.float16) if v.dtype == torch.float32 else v for k, v in input.items()}
+
+        # Multimodal
+        elif label == "Processor":
+            from PIL import Image
+            import numpy as np
+            # Create a dummy white image
+            arr = np.ones((224, 224, 3), dtype=np.uint8) * 255
+            img = Image.fromarray(arr)
+            text = "How to prepare coffee?"
+            # Combine text and image to create input for the processor
+            input = tokenizer(text=text, images=img, return_tensors="pt")
+
+        print(f"[OK] Input created correctly as a {label}")
+
+    except Exception as e:
+        raise Exception(f"Error creating input for model {model_name}, tokenizer {tokenizer} : {e}")
+
+    return model, tokenizer, input
+
 # Signal handler
 def signal_handler(sig, frame):
     print("\nExiting")
@@ -73,24 +215,26 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     upmem_layers.initialize_profiling_options(simulation=True)
     upmem_layers.profiler_init()
 
+    hw_selected = hw_constraints.hardware_required()[0]
+
     layer_mapping = {
-        "input_layernorm": "PIM-AI-1chip",
-        "q_proj": "PIM-AI-1chip",
-        "k_proj": "PIM-AI-1chip",
-        "rotary_emb": "PIM-AI-1chip",
-        "v_proj": "PIM-AI-1chip",
-        "o_proj": "PIM-AI-1chip",
-        "output_layernorm": "PIM-AI-1chip",
-        "gate_proj": "PIM-AI-1chip",
-        "up_proj": "PIM-AI-1chip",
-        "down_proj": "PIM-AI-1chip",
-        "norm": "PIM-AI-1chip",
-        "lm_head": "PIM-AI-1chip",
+        "input_layernorm": hw_selected,
+        "q_proj": hw_selected,
+        "k_proj": hw_selected,
+        "rotary_emb": hw_selected,
+        "v_proj": hw_selected,
+        "o_proj": hw_selected,
+        "output_layernorm": hw_selected,
+        "gate_proj": hw_selected,
+        "up_proj": hw_selected,
+        "down_proj": hw_selected,
+        "norm": hw_selected,
+        "lm_head": hw_selected,
     }
 
     # Use model path if available
     if ml_model.model_path() != "":
-        print("Using model path")
+        print(f"Using model path")
         # Instantiate the ONNX predictor model
         onnx_model = ONNXModel(ml_model.model_path())
         my_tensor = torch.rand(1, 3, 640, 640, dtype=torch.float32)
@@ -102,7 +246,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     # Use Hugging Face model
     else:
         try:
-            print("Using Hugging Face model")
+            print(f"Using Hugging Face model")
             hf_token = None
             extra_data_bytes = hw_constraints.extra_data()
             if extra_data_bytes:
@@ -110,53 +254,57 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                 extra_data_dict = json.loads(extra_data_str)
                 if "hf_token" in extra_data_dict:
                     hf_token = extra_data_dict["hf_token"]
+            if hf_token is None:
+                raise Exception("HF token was not provided. Please set the HF_TOKEN environment variable.")
 
-            model = transformers.AutoModelForCausalLM.from_pretrained(  # Only works with LLM models
-                ml_model.model(), token=hf_token, trust_remote_code=True
+            model, tokenizer, input = load_any_model(
+                ml_model.model(),
+                hf_token=hf_token,
+                low_cpu_mem_usage=True,
+                torch_dtype=torch.float16
             )
-            tokenizer = transformers.AutoTokenizer.from_pretrained(
-                ml_model.model(), token=hf_token
-            )
-
-            if tokenizer.eos_token is None:
-                tokenizer.eos_token = "<|endoftext|>"  # noqa: E501 - using required token for model
-
-            tokenizer.pad_token = tokenizer.eos_token
-            model.config.pad_token_id = tokenizer.eos_token_id
-
-            prompt = "How to prepare coffee?"
-            inputs = tokenizer(prompt, return_tensors="pt",
-                            padding=True, truncation=True,
-                            return_token_type_ids=False)
-
-            print(inputs.data["input_ids"][0].shape)
+            print(f"Model, Tokenizer and Input loaded successfully")
+            print(f"Model: {model}")
+            print(f"Tokenizer: {tokenizer}")
+            print(f"Input: {input}")
 
             model.eval()  # Put model in evaluation / inference mode
-
-            print(model)
-            print()
 
             # noinspection PyUnresolvedReferences
             upmem_layers.profiler_start(layer_mapping)
             # In case we want to time the original execution (comment out profiler_start)
             # start = time.time_ns()
-            gen_tokens = model.generate(
-                inputs.input_ids, do_sample=True, temperature=0.9, min_length=64, max_length=64
-            )
+
+            try:
+                output = model.generate(
+                    **input, do_sample=True, temperature=0.9, min_length=64, max_length=64
+                )
+            except Exception as e_gen:
+                print(f"Error generating output with generate: {e_gen}. Trying forward instead.")
+                try:
+                    output = model(**input, bool_masked_pos=False)
+                except Exception as e_model:
+                    print(f"Error generating output using model: {e_model}")
+                    raise Exception from e_model
+
             # noinspection PyUnresolvedReferences
             upmem_layers.profiler_end()
 
-            gen_text = tokenizer.batch_decode(
-                gen_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False
-            )[0]
         except Exception as e:
             import traceback
             traceback.print_exc()
             print(f"Error testing model on hardware: {e}")
             print(f"Please provide different model")
+            hw.hw_description("Error")
+            hw.power_consumption(0.0)
+            hw.latency(0.0)
+            error_message = "Failed to test model on hardware: " + str(e)
+            error_info = {"error": error_message}
+            encoded_error = json.dumps(error_info).encode("utf-8")
+            hw.extra_data(encoded_error)
             return
 
-    hw.hw_description("PIM-AI-1chip")
+    hw.hw_description(hw_selected)
     hw.power_consumption(upmem_layers.profiler_get_power_consumption())
     hw.latency(upmem_layers.profiler_get_latency())
     print(f"Power Consumption: {upmem_layers.profiler_get_power_consumption():.8f} W")
@@ -196,17 +344,13 @@ def configuration_callback(req, res):
             res.err_code(1) # 0: No error || 1: Error
 
     else:
-        # Dummy JSON configuration and implementation
-        dummy_config = {
-            "param1": "value1",
-            "param2": "value2",
-            "param3": "value3"
-        }
-        res.configuration(json.dumps(dummy_config))
         res.node_id(req.node_id())
         res.transaction_id(req.transaction_id())
-        res.success(True)
-        res.err_code(0) # 0: No error || 1: Error
+        error_msg = f"Unsupported configuration request: {req.configuration()}"
+        res.configuration(json.dumps({"error": error_msg}))
+        res.success(False)
+        res.err_code(1) # 0: No error || 1: Error
+        print(error_msg)
 
 # Main workflow routine
 def run():

@@ -72,17 +72,14 @@ def configuration_callback(req, res):
 
     # Callback for configuration implementation here
 
-    # Dummy JSON configuration and implementation
-    dummy_config = {
-        "param1": "value1",
-        "param2": "value2",
-        "param3": "value3"
-    }
-    res.configuration(json.dumps(dummy_config))
+    # Case not supported
     res.node_id(req.node_id())
     res.transaction_id(req.transaction_id())
-    res.success(True)
-    res.err_code(0) # 0: No error || 1: Error
+    error_msg = f"Unsupported configuration request: {req.configuration()}"
+    res.configuration(json.dumps({"error": error_msg}))
+    res.success(False)
+    res.err_code(1) # 0: No error || 1: Error
+    print(error_msg)
 
 
 # Main workflow routine
