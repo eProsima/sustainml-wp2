@@ -232,16 +232,26 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
         "lm_head": hw_selected,
     }
 
-    # Use model path if available
-    if ml_model.model_path() != "":
-        print(f"Using model path")
-        # Instantiate the ONNX predictor model
-        onnx_model = ONNXModel(ml_model.model_path())
-        my_tensor = torch.rand(1, 3, 640, 640, dtype=torch.float32)
+    model_path = ml_model.model_path()
+    if isinstance(model_path, (list, tuple)):
+        try:
+            model_path = ''.join(chr(b) for b in model_path)
+        except Exception:
+            model_path = ""
 
-        upmem_layers.profiler_start(layer_mapping)
-        onnx_model.forward(my_tensor)
-        upmem_layers.profiler_end()
+    # Use model path if available
+    if model_path and model_path != "Error":
+        print(f"Using ONNX model path: {model_path}")
+        try:
+            onnx_model = ONNXModel(model_path)
+            my_tensor = torch.rand(1,3,640,640, dtype=torch.float32)
+            upmem_layers.profiler_start(layer_mapping)
+            onnx_model.forward(my_tensor)
+            upmem_layers.profiler_end()
+
+        except Exception as e:
+            print(f"[WARN] Failed to load/run ONNX at '{model_path}': {e}. Falling back to HF model.")
+            model_path = ""
 
     # Use Hugging Face model
     else:
