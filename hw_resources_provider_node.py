@@ -14,6 +14,7 @@
 """SustainML HW Resources Provider Node Implementation."""
 
 from sustainml_py.nodes.HardwareResourcesNode import HardwareResourcesNode
+from rptu_framework import integration as rptu_integration
 
 # Managing UPMEMEM LLM
 import upmem_llm_framework as upmem_layers
@@ -222,6 +223,9 @@ def signal_handler(sig, frame):
 # Outputs: node_status, hw
 def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
+    latency = 0.0
+    power_consumption = 0.0
+
     global hf_token
 
     upmem_layers.initialize_profiling_options(simulation=True)
@@ -251,21 +255,21 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
         except Exception:
             model_path = ""
 
-    # Use model path if available
-    if model_path and model_path != "Error":
-        print(f"Using ONNX model path: {model_path}")
+    # Use RPTU hw predictor for their devices
+    if hw_selected in ["Zynq UltraScale+ ZCU102", "Zynq UltraScale+ ZCU104", "Ultra96-V2", "TySOM-3A-ZU19EG"]:
+        print(f"Using ONNX model path")
         try:
-            onnx_model = ONNXModel(model_path)
-            my_tensor = torch.rand(1,3,640,640, dtype=torch.float32)
-            upmem_layers.profiler_start(layer_mapping)
-            onnx_model.forward(my_tensor)
-            upmem_layers.profiler_end()
+            # Use RPTU
+            results = rptu_integration.onnx_ml_resource_estimation(os.path.dirname(__file__)+'/rptu_framework/model.onnx', hw_selected) # TODO: hw_selected should affect predictor
+            print(f"RPTU latency results: {results['Latency']}")
+            print(f"RPTU power consumption results: {results['Run_power']}")
+            latency = results['Latency']
+            power_consumption = results['Run_power']
 
         except Exception as e:
-            print(f"[WARN] Failed to load/run ONNX at '{model_path}': {e}. Falling back to HF model.")
-            model_path = ""
+            print(f"[ERROR] Failed to load/run ONNX at '{model_path}': {e}.")
 
-    # Use Hugging Face model
+    # Use UPMEM hw simulator
     else:
         try:
             print(f"Using Hugging Face model")
@@ -312,6 +316,9 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             # noinspection PyUnresolvedReferences
             upmem_layers.profiler_end()
 
+            latency = upmem_layers.profiler_get_latency()
+            power_consumption = upmem_layers.profiler_get_power_consumption()
+
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -327,10 +334,10 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             return
 
     hw.hw_description(hw_selected)
-    hw.power_consumption(upmem_layers.profiler_get_power_consumption())
-    hw.latency(upmem_layers.profiler_get_latency())
-    print(f"Power Consumption: {upmem_layers.profiler_get_power_consumption():.8f} W")
-    print(f"Latency: {upmem_layers.profiler_get_latency()} ms")
+    hw.power_consumption(power_consumption)
+    hw.latency(latency)
+    print(f"Power Consumption: {power_consumption:.8f} W")
+    print(f"Latency: {latency} ms")
 
 # User Configuration Callback implementation
 # Inputs: req
@@ -345,10 +352,12 @@ def configuration_callback(req, res):
 
             # Retrieve Hardwares from sim_architectures.yaml
             with open(os.path.dirname(__file__)+'/upmem_llm_framework/sim_architectures.yaml', 'r') as file:
-                architectures = yaml.safe_load(file)
+                upmem_devices = yaml.safe_load(file)
+            with open(os.path.dirname(__file__)+'/rptu_framework/rptu_devices.yaml', 'r') as file:
+                rptu_devices = yaml.safe_load(file)
 
             # Extract the hardware names
-            hardware_names = list(architectures.keys())
+            hardware_names = list(upmem_devices.keys()) + list(rptu_devices.keys())
 
             if not hardware_names:
                 res.success(False)
@@ -356,7 +365,9 @@ def configuration_callback(req, res):
             else:
                 res.success(True)
                 res.err_code(0) # 0: No error || 1: Error
-            sorted_hardware_names = ', '.join(sorted(hardware_names))
+            sorted_architectures = sorted(list(upmem_devices.keys()))
+            sorted_rptu_devices = sorted(list(rptu_devices.keys()))
+            sorted_hardware_names = ', '.join(sorted_architectures + sorted_rptu_devices)
             print(f"Available Hardwares: {sorted_hardware_names}")
             res.configuration(json.dumps(dict(hardwares=sorted_hardware_names)))
 
