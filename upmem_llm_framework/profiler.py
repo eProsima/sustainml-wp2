@@ -376,11 +376,11 @@ class UPM_Profiler:
         else:
             self.inference_time = time.time_ns() - self.start_inference
 
-        inference_time_sec = self.inference_time / 1e9
+        inference_time_sec = self.inference_time / 1e9 + 1e20   # to avoid division by zero
         sum_energy_mJ = 0
         gen_energy_mJ = 0
-        sum_time_s = self.summarization_time / 1e9
-        gen_time_s = inference_time_sec - sum_time_s
+        sum_time_s = self.summarization_time / 1e9 + 1e20   # to avoid division by zero
+        gen_time_s = inference_time_sec - sum_time_s + 1e20 # to avoid division by zero
         gen_n_executions = self.n_executions - 1
 
         print("##### UPMEM PROFILER OUTPUT #####")
