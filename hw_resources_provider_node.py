@@ -101,28 +101,43 @@ def load_any_model(model_name, hf_token=None, **kwargs):
         ("VitPose", transformers.VitPoseForPoseEstimation, {})
     ]
 
-    for label, model_class, extra_args in available_model_classes:
-        try:
-            print(f"Try model without hf_token loaded as {label}")
-            model = model_class.from_pretrained(
-                model_name,
-                trust_remote_code=True,
-                **{**extra_args, **kwargs}
-            )
-            print(f"[OK]")
-            break
-        except Exception as e:
-            print(f"Try model with hf_token loaded as {label}")
-            try:
-                model = model_class.from_pretrained(
-                    model_name,
-                    token=hf_token,
-                    trust_remote_code=True,
-                    **{**extra_args, **kwargs}
-                )
-                print(f"[OK]")
-            except Exception as e:
-                print(f"[WARN] Could not load model as {label}: {e}")
+    config = transformers.AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+    print(f"Model configuration loaded: {config}")
+    model_class = transformers.AutoModel._model_mapping.get(type(config), None)
+
+    if model_class is None:
+        raise ValueError(f"No model class found for config type: {type(config)}")
+    if "llama" in model_class.__name__.lower() or "mistral" in model_class.__name__.lower() or "qwen" in model_class.__name__.lower() or "phi3" in model_class.__name__.lower():
+        raise ValueError("Models that use 'llama', 'mistral', 'qwen' or 'phi3' are not supported.")
+
+    print(f"Model class found: {model_class.__name__}")
+
+    model = model_class(config)
+    print(f"Model loaded as {model.__class__.__name__}")
+
+
+    # for label, model_class, extra_args in available_model_classes:
+    #     try:
+    #         print(f"Try model without hf_token loaded as {label}")
+    #         model = model_class.from_pretrained(
+    #             model_name,
+    #             trust_remote_code=True,
+    #             **{**extra_args, **kwargs}
+    #         )
+    #         print(f"[OK]")
+    #         break
+    #     except Exception as e:
+    #         print(f"Try model with hf_token loaded as {label}")
+    #         try:
+    #             model = model_class.from_pretrained(
+    #                 model_name,
+    #                 token=hf_token,
+    #                 trust_remote_code=True,
+    #                 **{**extra_args, **kwargs}
+    #             )
+    #             print(f"[OK]")
+    #         except Exception as e:
+    #             print(f"[WARN] Could not load model as {label}: {e}")
 
     if model is None:
         raise Exception(f"Model {model_name} is not currently supported")
