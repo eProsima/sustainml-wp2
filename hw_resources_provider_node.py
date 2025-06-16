@@ -61,6 +61,7 @@ def load_any_model(model_name, hf_token=None, **kwargs):
     model = None
     available_model_classes = [
         ("CausalLM", transformers.AutoModelForCausalLM, {"ignore_mismatched_sizes": True}),
+        ("Generic", transformers.AutoModel, {}),
         ("Seq2Seq", transformers.AutoModelForSeq2SeqLM, {}),
         ("TokenClassification", transformers.AutoModelForTokenClassification, {}),
         ("SequenceClassification", transformers.AutoModelForSequenceClassification, {}),
@@ -96,22 +97,31 @@ def load_any_model(model_name, hf_token=None, **kwargs):
         ("VisualQuestionAnswering", transformers.AutoModelForVisualQuestionAnswering, {}),
         ("Vision2Seq", transformers.AutoModelForVision2Seq, {}),
         ("ImageTextToText", transformers.AutoModelForImageTextToText, {}),
-        ("VitPose", transformers.VitPoseForPoseEstimation, {}),
-        ("Generic", transformers.AutoModel, {})
+        ("VitPose", transformers.VitPoseForPoseEstimation, {})
     ]
 
     for label, model_class, extra_args in available_model_classes:
         try:
+            print(f"Try model without hf_token loaded as {label}")
             model = model_class.from_pretrained(
                 model_name,
-                token=hf_token,
                 trust_remote_code=True,
                 **{**extra_args, **kwargs}
             )
-            print(f"[OK] Model loaded as {label}")
+            print(f"[OK]")
             break
         except Exception as e:
-            print(f"[WARN] Could not load model as {label}: {e}")
+            print(f"Try model with hf_token loaded as {label}")
+            try:
+                model = model_class.from_pretrained(
+                    model_name,
+                    token=hf_token,
+                    trust_remote_code=True,
+                    **{**extra_args, **kwargs}
+                )
+                print(f"[OK]")
+            except Exception as e:
+                print(f"[WARN] Could not load model as {label}: {e}")
 
     if model is None:
         raise Exception(f"Model {model_name} is not currently supported")
@@ -125,13 +135,14 @@ def load_any_model(model_name, hf_token=None, **kwargs):
 
     for label, token_class, extra_args in available_token_classes:
         try:
+            print(f"Try token loaded as {label}")
             tokenizer = token_class.from_pretrained(
                 model_name,
                 token=hf_token,
                 trust_remote_code=True,
                 **{**extra_args, **kwargs}
             )
-            print(f"[OK] Token loaded as {label}")
+            print(f"[OK]")
             break
         except Exception as e:
             print(f"[WARN] Could not load token as {label}: {e}")
@@ -141,6 +152,7 @@ def load_any_model(model_name, hf_token=None, **kwargs):
 
     input = None
     try:
+        print(f"Try input created as a {label}")
         # Text
         if label == "Token":
             if tokenizer.eos_token is None:
@@ -292,7 +304,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             except Exception as e_gen:
                 print(f"Error generating output with generate: {e_gen}. Trying forward instead.")
                 try:
-                    output = model(**input, bool_masked_pos=False)
+                    output = model(**input)
                 except Exception as e_model:
                     print(f"Error generating output using model: {e_model}")
                     raise Exception from e_model
