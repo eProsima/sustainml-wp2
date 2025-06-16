@@ -223,6 +223,9 @@ def signal_handler(sig, frame):
 # Outputs: node_status, hw
 def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
+    #Variable to store RPTU default model
+    rptu_model = os.path.dirname(__file__)+'/rptu_framework/model.onnx'
+
     latency = 0.0
     power_consumption = 0.0
 
@@ -260,7 +263,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
         print(f"Using ONNX model path")
         try:
             # Use RPTU
-            results = rptu_integration.onnx_ml_resource_estimation(os.path.dirname(__file__)+'/rptu_framework/model.onnx', hw_selected) # TODO: hw_selected should affect predictor
+            results = rptu_integration.onnx_ml_resource_estimation(rptu_model, hw_selected) # TODO: hw_selected should affect predictor
             print(f"RPTU latency results: {results['Latency']}")
             print(f"RPTU power consumption results: {results['Run_power']}")
             latency = results['Latency']
