@@ -60,84 +60,30 @@ class ONNXModel(torch.nn.Module):
 def load_any_model(model_name, hf_token=None, **kwargs):
 
     model = None
-    available_model_classes = [
-        ("CausalLM", transformers.AutoModelForCausalLM, {"ignore_mismatched_sizes": True}),
-        ("Generic", transformers.AutoModel, {}),
-        ("Seq2Seq", transformers.AutoModelForSeq2SeqLM, {}),
-        ("TokenClassification", transformers.AutoModelForTokenClassification, {}),
-        ("SequenceClassification", transformers.AutoModelForSequenceClassification, {}),
-        ("PreTraining", transformers.AutoModelForPreTraining, {}),
-        ("MaskedLM", transformers.AutoModelForMaskedLM, {}),
-        ("MaskGeneration", transformers.AutoModelForMaskGeneration, {}),
-        ("MultipleChoice", transformers.AutoModelForMultipleChoice, {}),
-        ("NextSentencePrediction", transformers.AutoModelForNextSentencePrediction, {}),
-        ("QuestionAnswering", transformers.AutoModelForQuestionAnswering, {}),
-        ("TextEncoding", transformers.AutoModelForTextEncoding, {}),
-        ("DepthEstimation", transformers.AutoModelForDepthEstimation, {}),
-        ("ImageClassification", transformers.AutoModelForImageClassification, {}),
-        ("VideoClassification", transformers.AutoModelForVideoClassification, {}),
-        ("KeypointDetection", transformers.AutoModelForKeypointDetection, {}),
-        ("MaskedImageModeling", transformers.AutoModelForMaskedImageModeling, {}),
-        ("ObjectDetection", transformers.AutoModelForObjectDetection, {}),
-        ("ImageSegmentation", transformers.AutoModelForImageSegmentation, {}),
-        ("ImageToImage", transformers.AutoModelForImageToImage, {}),
-        ("SemanticSegmentation", transformers.AutoModelForSemanticSegmentation, {}),
-        ("InstanceSegmentation", transformers.AutoModelForInstanceSegmentation, {}),
-        ("UniversalSegmentation", transformers.AutoModelForUniversalSegmentation, {}),
-        ("ZeroShotImageClassification", transformers.AutoModelForZeroShotImageClassification, {}),
-        ("ZeroShotObjectDetection", transformers.AutoModelForZeroShotObjectDetection, {}),
-        ("AudioClassification", transformers.AutoModelForAudioClassification, {}),
-        ("AudioFrameClassification", transformers.AutoModelForAudioFrameClassification, {}),
-        ("CTC", transformers.AutoModelForCTC, {}),
-        ("SpeechSeq2Seq", transformers.AutoModelForSpeechSeq2Seq, {}),
-        ("AudioXVector", transformers.AutoModelForAudioXVector, {}),
-        ("TextToSpectrogram", transformers.AutoModelForTextToSpectrogram, {}),
-        ("TextToWaveform", transformers.AutoModelForTextToWaveform, {}),
-        ("TableQuestionAnswering", transformers.AutoModelForTableQuestionAnswering, {}),
-        ("DocumentQuestionAnswering", transformers.AutoModelForDocumentQuestionAnswering, {}),
-        ("VisualQuestionAnswering", transformers.AutoModelForVisualQuestionAnswering, {}),
-        ("Vision2Seq", transformers.AutoModelForVision2Seq, {}),
-        ("ImageTextToText", transformers.AutoModelForImageTextToText, {}),
-        ("VitPose", transformers.VitPoseForPoseEstimation, {})
-    ]
 
     config = transformers.AutoConfig.from_pretrained(model_name, trust_remote_code=True)
     print(f"Model configuration loaded: {config}")
     model_class = transformers.AutoModel._model_mapping.get(type(config), None)
 
-    if model_class is None:
-        raise ValueError(f"No model class found for config type: {type(config)}")
-    if "llama" in model_class.__name__.lower() or "mistral" in model_class.__name__.lower() or "qwen" in model_class.__name__.lower() or "phi3" in model_class.__name__.lower():
-        raise ValueError("Models that use 'llama', 'mistral', 'qwen' or 'phi3' are not supported.")
+    if "llama" in model_class.__name__.lower() or \
+       "mistral" in model_class.__name__.lower() or \
+       "qwen" in model_class.__name__.lower() or \
+       "phi3" in model_class.__name__.lower() or \
+       "t5" in model_class.__name__.lower():
+        raise ValueError("Models that use 'llama', 'mistral', 'qwen', 'phi3' or 't5' are not supported.")
 
-    print(f"Model class found: {model_class.__name__}")
+    try:
+        if model_class is None:
+            print(f"No model class found for config type: {type(config)}")
+            model = transformers.AutoModel.from_config(config)
 
-    model = model_class(config)
-    print(f"Model loaded as {model.__class__.__name__}")
+        else:
+            print(f"Model class found from config: {model_class.__name__}")
 
-
-    # for label, model_class, extra_args in available_model_classes:
-    #     try:
-    #         print(f"Try model without hf_token loaded as {label}")
-    #         model = model_class.from_pretrained(
-    #             model_name,
-    #             trust_remote_code=True,
-    #             **{**extra_args, **kwargs}
-    #         )
-    #         print(f"[OK]")
-    #         break
-    #     except Exception as e:
-    #         print(f"Try model with hf_token loaded as {label}")
-    #         try:
-    #             model = model_class.from_pretrained(
-    #                 model_name,
-    #                 token=hf_token,
-    #                 trust_remote_code=True,
-    #                 **{**extra_args, **kwargs}
-    #             )
-    #             print(f"[OK]")
-    #         except Exception as e:
-    #             print(f"[WARN] Could not load model as {label}: {e}")
+            model = model_class(config)
+            print(f"Model class from config with config: {model}")
+    except Exception as e:
+        raise Exception(f"[ERROR] Could not load model {model_name}: {e}")
 
     if model is None:
         raise Exception(f"Model {model_name} is not currently supported")
@@ -251,21 +197,6 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
     hw_selected = hw_constraints.hardware_required()[0]
 
-    layer_mapping = {
-        "input_layernorm": hw_selected,
-        "q_proj": hw_selected,
-        "k_proj": hw_selected,
-        "rotary_emb": hw_selected,
-        "v_proj": hw_selected,
-        "o_proj": hw_selected,
-        "output_layernorm": hw_selected,
-        "gate_proj": hw_selected,
-        "up_proj": hw_selected,
-        "down_proj": hw_selected,
-        "norm": hw_selected,
-        "lm_head": hw_selected,
-    }
-
     model_path = ml_model.model_path()
     if isinstance(model_path, (list, tuple)):
         try:
@@ -312,10 +243,29 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             print(f"Tokenizer: {tokenizer}")
             print(f"Input: {input}")
 
+            layer_mapping = {}
+            for name, module in model.named_modules():
+                if not name:
+                    continue
+                if len(list(module.children())) == 0:
+                    layer_mapping[name.split('.')[-1]] = hw_selected
+
+            raw_last = list(layer_mapping.keys())[-1]
+            last_layer = raw_last.split('.')[-1]
+            print(f"Last layer for profiling: {last_layer}")    #debug
+
+
+            print("Mapped leaf modules:")
+            for k in (layer_mapping): #debug
+                print("  ", k)
+
             model.eval()  # Put model in evaluation / inference mode
 
             # noinspection PyUnresolvedReferences
-            upmem_layers.profiler_start(layer_mapping)
+            upmem_layers.profiler_start(
+                layer_mapping    = layer_mapping,
+                last_layer       = last_layer,
+            )
             # In case we want to time the original execution (comment out profiler_start)
             # start = time.time_ns()
 
@@ -326,6 +276,8 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             except Exception as e_gen:
                 print(f"Error generating output with generate: {e_gen}. Trying forward instead.")
                 try:
+                    if "decoder_input_ids" not in input and "input_ids" in input:
+                        input["decoder_input_ids"] = input["input_ids"]
                     output = model(**input)
                 except Exception as e_model:
                     print(f"Error generating output using model: {e_model}")
