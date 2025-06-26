@@ -61,16 +61,19 @@ def load_any_model(model_name, hf_token=None, **kwargs):
 
     model = None
 
-    config = transformers.AutoConfig.from_pretrained(model_name, trust_remote_code=True)
-    print(f"Model configuration loaded: {config}")
-    model_class = transformers.AutoModel._model_mapping.get(type(config), None)
+    try:
+        config = transformers.AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+        print(f"Model configuration loaded: {config}")
+        model_class = transformers.AutoModel._model_mapping.get(type(config), None)
 
-    if "llama" in model_class.__name__.lower() or \
-       "mistral" in model_class.__name__.lower() or \
-       "qwen" in model_class.__name__.lower() or \
-       "phi3" in model_class.__name__.lower() or \
-       "t5" in model_class.__name__.lower():
-        raise ValueError("Models that use 'llama', 'mistral', 'qwen', 'phi3' or 't5' are not supported.")
+        if "llama" in model_class.__name__.lower() or \
+        "mistral" in model_class.__name__.lower() or \
+        "qwen" in model_class.__name__.lower() or \
+        "phi3" in model_class.__name__.lower() or \
+        "t5" in model_class.__name__.lower():
+            raise ValueError("Models that use 'llama', 'mistral', 'qwen', 'phi3' or 't5' are not supported.")
+    except Exception as e:
+        raise Exception(f"[ERROR] Could not load model {model_name}: {e}")
 
     try:
         if model_class is None:
@@ -226,7 +229,12 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             extra_data_bytes = hw_constraints.extra_data()
             if extra_data_bytes:
                 extra_data_str = ''.join(chr(b) for b in extra_data_bytes)
-                extra_data_dict = json.loads(extra_data_str)
+                if extra_data_str:
+                    try:
+                        extra_data_dict = json.loads(extra_data_str)
+                    except json.JSONDecodeError:
+                        print(f"[WARN] extra_data no es JSON válido: {extra_data_str!r}")
+                        extra_data_dict = {}
                 if "hf_token" in extra_data_dict:
                     hf_token = extra_data_dict["hf_token"]
             if hf_token is None:
@@ -276,12 +284,15 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             except Exception as e_gen:
                 print(f"Error generating output with generate: {e_gen}. Trying forward instead.")
                 try:
-                    if "decoder_input_ids" not in input and "input_ids" in input:
-                        input["decoder_input_ids"] = input["input_ids"]
                     output = model(**input)
                 except Exception as e_model:
                     print(f"Error generating output using model: {e_model}")
-                    raise Exception from e_model
+                    if "decoder_input_ids" not in input and "input_ids" in input:
+                        input["decoder_input_ids"] = input["input_ids"]
+                    try:
+                        output = model(**input)
+                    except Exception as e_model2:
+                        raise Exception(e_model2)
 
             # noinspection PyUnresolvedReferences
             upmem_layers.profiler_end()
