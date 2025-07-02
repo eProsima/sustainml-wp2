@@ -233,7 +233,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                     try:
                         extra_data_dict = json.loads(extra_data_str)
                     except json.JSONDecodeError:
-                        print(f"[WARN] extra_data no es JSON válido: {extra_data_str!r}")
+                        print("[WARN] In hw_provider node extra_data JSON is not valid.")
                         extra_data_dict = {}
                 if "hf_token" in extra_data_dict:
                     hf_token = extra_data_dict["hf_token"]
