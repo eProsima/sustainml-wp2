@@ -49,7 +49,11 @@ def task_callback(user_input, node_status, hw_constraints):
         extra_data = np.frombuffer(buffer, dtype=np.uint8)
         extra_data_str = extra_data.tobytes().decode('utf-8', errors='ignore')
         try:
-            json_obj = json.loads(extra_data_str)
+            try:
+                json_obj = json.loads(extra_data_str)
+            except json.JSONDecodeError:
+                print("[WARN] In hw_constrains node extra_data JSON is not valid.")
+                json_obj = {}
             if json_obj is not None:
                 mem_footprint = int(json_obj["max_memory_footprint"])
                 hw_req = json_obj["hardware_required"]
