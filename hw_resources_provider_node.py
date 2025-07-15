@@ -19,7 +19,6 @@ from rptu_framework import integration as rptu_integration
 # Managing UPMEMEM LLM
 import upmem_llm_framework as upmem_layers
 import transformers
-import onnxruntime
 import os
 import signal
 import threading
@@ -31,33 +30,9 @@ import yaml
 # Whether to go on spinning or interrupt
 running = False
 
-# ONNX Model-based testing class
-class ONNXModel(torch.nn.Module):
-    def __init__(self, onnx_model_path):
-        super(ONNXModel, self).__init__()
-        self.onnx_session = onnxruntime.InferenceSession(onnx_model_path)
 
-    def forward(self, inputs: torch.Tensor):
-        input_name = self.onnx_session.get_inputs()[0].name
-        np_input = inputs.detach().cpu().numpy()
-        outputs = self.onnx_session.run(None, {input_name: np_input})
-
-        if len(outputs) == 1:
-            return torch.from_numpy(outputs[0])
-
-        elif len(outputs) == 2:
-            bounding_boxes = torch.from_numpy(outputs[0])
-            class_scores = torch.from_numpy(outputs[1])
-            return bounding_boxes, class_scores
-
-        else:
-            return tuple(torch.from_numpy(out) for out in outputs)
-
-    # def forward(self, inputs):
-    #     # TODO - Make something intelligent to determine the forward method
-    #     return torch.nn.functional.softmax(inputs, dim=0)
-
-def load_any_model(model_name, hf_token=None, **kwargs):
+# Load generic ml model and generate its input
+def load_any_model(model_name, hf_token=None, unsupported_models=None, **kwargs):
 
     model = None
 
@@ -66,12 +41,11 @@ def load_any_model(model_name, hf_token=None, **kwargs):
         print(f"Model configuration loaded: {config}")
         model_class = transformers.AutoModel._model_mapping.get(type(config), None)
 
-        if "llama" in model_class.__name__.lower() or \
-        "mistral" in model_class.__name__.lower() or \
-        "qwen" in model_class.__name__.lower() or \
-        "phi3" in model_class.__name__.lower() or \
-        "t5" in model_class.__name__.lower():
-            raise ValueError("Models that use 'llama', 'mistral', 'qwen', 'phi3' or 't5' are not supported.")
+        if unsupported_models is not None:
+            for unsupported in unsupported_models:
+                if unsupported.lower() in model_class.__name__.lower():
+                    raise ValueError(f"[WARNING] Models that use '{unsupported}' are not supported.")
+
     except Exception as e:
         raise Exception(f"[ERROR] Could not load model {model_name}: {e}")
 
@@ -107,7 +81,7 @@ def load_any_model(model_name, hf_token=None, **kwargs):
                 trust_remote_code=True,
                 **{**extra_args, **kwargs}
             )
-            print(f"[OK]")
+            print("[OK]")
             break
         except Exception as e:
             print(f"[WARN] Could not load token as {label}: {e}")
@@ -175,6 +149,7 @@ def load_any_model(model_name, hf_token=None, **kwargs):
 
     return model, tokenizer, input
 
+
 # Signal handler
 def signal_handler(sig, frame):
     print("\nExiting")
@@ -182,12 +157,13 @@ def signal_handler(sig, frame):
     global running
     running = False
 
+
 # User Callback implementation
 # Inputs: ml_model, app_requirements, hw_constraints
 # Outputs: node_status, hw
 def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
-    #Variable to store RPTU default model
+    # Variable to store RPTU default model
     rptu_model = os.path.dirname(__file__)+'/rptu_framework/model.onnx'
 
     latency = 0.0
@@ -209,7 +185,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
     # Use RPTU hw predictor for their devices
     if hw_selected in ["Zynq UltraScale+ ZCU102", "Zynq UltraScale+ ZCU104", "Ultra96-V2", "TySOM-3A-ZU19EG"]:
-        print(f"Using ONNX model path")
+        print("Using ONNX model path")
         try:
             # Use RPTU
             results = rptu_integration.onnx_ml_resource_estimation(rptu_model, hw_selected) # TODO: hw_selected should affect predictor
@@ -224,7 +200,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     # Use UPMEM hw simulator
     else:
         try:
-            print(f"Using Hugging Face model")
+            print("Using Hugging Face model")
             hf_token = None
             extra_data_bytes = hw_constraints.extra_data()
             if extra_data_bytes:
@@ -240,13 +216,27 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             if hf_token is None:
                 raise Exception("HF token was not provided. Please set the HF_TOKEN environment variable.")
 
+            unsupported_models = None
+            extra_data_bytes = ml_model.extra_data()
+            if extra_data_bytes:
+                extra_data_str = ''.join(chr(b) for b in extra_data_bytes)
+                if extra_data_str:
+                    try:
+                        extra_data_dict = json.loads(extra_data_str)
+                    except json.JSONDecodeError:
+                        print("[WARN] In ml_model node extra_data JSON is not valid.")
+                        extra_data_dict = {}
+                    if "unsupported_models" in extra_data_dict:
+                        unsupported_models = extra_data_dict["unsupported_models"]
+
             model, tokenizer, input = load_any_model(
                 ml_model.model(),
                 hf_token=hf_token,
+                unsupported_models=unsupported_models,
                 low_cpu_mem_usage=True,
                 torch_dtype=torch.float16
             )
-            print(f"Model, Tokenizer and Input loaded successfully")
+            print("Model, Tokenizer and Input loaded successfully")
             print(f"Model: {model}")
             print(f"Tokenizer: {tokenizer}")
             print(f"Input: {input}")
@@ -260,37 +250,36 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
             raw_last = list(layer_mapping.keys())[-1]
             last_layer = raw_last.split('.')[-1]
-            print(f"Last layer for profiling: {last_layer}")    #debug
-
+            print(f"Last layer for profiling: {last_layer}")  # debug
 
             print("Mapped leaf modules:")
-            for k in (layer_mapping): #debug
+            for k in (layer_mapping):  # debug
                 print("  ", k)
 
             model.eval()  # Put model in evaluation / inference mode
 
             # noinspection PyUnresolvedReferences
             upmem_layers.profiler_start(
-                layer_mapping    = layer_mapping,
-                last_layer       = last_layer,
+                layer_mapping=layer_mapping,
+                last_layer=last_layer,
             )
             # In case we want to time the original execution (comment out profiler_start)
             # start = time.time_ns()
 
             try:
-                output = model.generate(
+                model.generate(
                     **input, do_sample=True, temperature=0.9, min_length=64, max_length=64
                 )
             except Exception as e_gen:
                 print(f"Error generating output with generate: {e_gen}. Trying forward instead.")
                 try:
-                    output = model(**input)
+                    model(**input)
                 except Exception as e_model:
                     print(f"Error generating output using model: {e_model}")
                     if "decoder_input_ids" not in input and "input_ids" in input:
                         input["decoder_input_ids"] = input["input_ids"]
                     try:
-                        output = model(**input)
+                        model(**input)
                     except Exception as e_model2:
                         raise Exception(e_model2)
 
@@ -304,7 +293,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             import traceback
             traceback.print_exc()
             print(f"Error testing model on hardware: {e}")
-            print(f"Please provide different model")
+            print("Please provide different model")
             hw.hw_description("Error")
             hw.power_consumption(0.0)
             hw.latency(0.0)
@@ -319,6 +308,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     hw.latency(latency)
     print(f"Power Consumption: {power_consumption:.8f} W")
     print(f"Latency: {latency} ms")
+
 
 # User Configuration Callback implementation
 # Inputs: req
@@ -342,10 +332,10 @@ def configuration_callback(req, res):
 
             if not hardware_names:
                 res.success(False)
-                res.err_code(1) # 0: No error || 1: Error
+                res.err_code(1)  # 0: No error || 1: Error
             else:
                 res.success(True)
-                res.err_code(0) # 0: No error || 1: Error
+                res.err_code(0)  # 0: No error || 1: Error
             sorted_architectures = sorted(list(upmem_devices.keys()))
             sorted_rptu_devices = sorted(list(rptu_devices.keys()))
             sorted_hardware_names = ', '.join(sorted_architectures + sorted_rptu_devices)
@@ -355,7 +345,7 @@ def configuration_callback(req, res):
         except Exception as e:
             print(f"Error getting types of hardwares from request: {e}")
             res.success(False)
-            res.err_code(1) # 0: No error || 1: Error
+            res.err_code(1)  # 0: No error || 1: Error
 
     else:
         res.node_id(req.node_id())
@@ -363,8 +353,9 @@ def configuration_callback(req, res):
         error_msg = f"Unsupported configuration request: {req.configuration()}"
         res.configuration(json.dumps({"error": error_msg}))
         res.success(False)
-        res.err_code(1) # 0: No error || 1: Error
+        res.err_code(1)  # 0: No error || 1: Error
         print(error_msg)
+
 
 # Main workflow routine
 def run():
@@ -372,6 +363,7 @@ def run():
     global running
     running = True
     node.spin()
+
 
 # Call main in program execution
 if __name__ == '__main__':
