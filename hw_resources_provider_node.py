@@ -15,6 +15,7 @@
 
 from sustainml_py.nodes.HardwareResourcesNode import HardwareResourcesNode
 from rptu_framework import integration as rptu_integration
+from transformers import (AutoConfig, AutoTokenizer, AutoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM)
 
 # Managing UPMEMEM LLM
 import upmem_llm_framework as upmem_layers
@@ -36,35 +37,44 @@ def load_any_model(model_name, hf_token=None, unsupported_models=None, **kwargs)
 
     model = None
 
-    try:
-        config = transformers.AutoConfig.from_pretrained(model_name, trust_remote_code=True)
-        print(f"Model configuration loaded: {config}")
-        model_class = transformers.AutoModel._model_mapping.get(type(config), None)
+    # Skip hardware test if there is no model
+    if model_name.upper() == "NO_MODEL":
+        print("[INFO] Skipping HW evaluation: no model selected for this task.")
+        return "NO_MODEL", None, None
 
+    try:
+        config = AutoConfig.from_pretrained(model_name, trust_remote_code=True, token=hf_token)
+        print(f"Model configuration loaded: {config}")
+        is_seq2seq = getattr(config, "is_encoder_decoder", False)
+
+        if is_seq2seq:
+            model = AutoModelForSeq2SeqLM.from_pretrained(
+                model_name, trust_remote_code=True, token=hf_token, **kwargs
+            )
+        else:
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name, trust_remote_code=True, token=hf_token, **kwargs
+                )
+            except Exception:
+                model = AutoModel.from_pretrained(
+                    model_name, trust_remote_code=True, token=hf_token, **kwargs
+                )
+
+        # Guard unsupported list AFTER we have the actual class
         if unsupported_models is not None:
+            cls_name = type(model).__name__.lower()
             for unsupported in unsupported_models:
-                if unsupported.lower() in model_class.__name__.lower():
+                if unsupported.lower() in cls_name:
                     raise ValueError(f"[WARNING] Models that use '{unsupported}' are not supported.")
 
     except Exception as e:
-        raise Exception(f"[ERROR] Could not load model {model_name}: {e}")
-
-    try:
-        if model_class is None:
-            print(f"No model class found for config type: {type(config)}")
-            model = transformers.AutoModel.from_config(config)
-
-        else:
-            print(f"Model class found from config: {model_class.__name__}")
-
-            model = model_class(config)
-            print(f"Model class from config with config: {model}")
-    except Exception as e:
-        raise Exception(f"[ERROR] Could not load model {model_name}: {e}")
+        raise Exception(f"[ERROR_LOAD] Could not load model {model_name}: {e}")
 
     if model is None:
         raise Exception(f"Model {model_name} is not currently supported")
 
+    tokenizer = None
     available_token_classes = [
         ("Token", transformers.AutoTokenizer, {}),
         ("Image", transformers.AutoImageProcessor, {"use_fast": True}),
@@ -266,22 +276,27 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             # In case we want to time the original execution (comment out profiler_start)
             # start = time.time_ns()
 
+            # Safe, minimal workload for HW profiling
             try:
-                model.generate(
-                    **input, do_sample=True, temperature=0.9, min_length=64, max_length=64
-                )
-            except Exception as e_gen:
-                print(f"Error generating output with generate: {e_gen}. Trying forward instead.")
-                try:
+                # Attempt generation if supported
+                if hasattr(model, "generate"):
+                    model.generate(**input, do_sample=False, max_length=64)
+                else:
                     model(**input)
+            except Exception as e_gen:
+                print(f"Error generating output with generate(): {e_gen}. Trying forward instead.")
+
+                # Convert input to mutable dict
+                input_dict = dict(input)
+
+                # Add decoder inputs for seq2seq models
+                if "decoder_input_ids" not in input_dict and "input_ids" in input_dict:
+                    input_dict["decoder_input_ids"] = input_dict["input_ids"]
+
+                try:
+                    model(**input_dict)
                 except Exception as e_model:
-                    print(f"Error generating output using model: {e_model}")
-                    if "decoder_input_ids" not in input and "input_ids" in input:
-                        input["decoder_input_ids"] = input["input_ids"]
-                    try:
-                        model(**input)
-                    except Exception as e_model2:
-                        raise Exception(e_model2)
+                    raise Exception(f"[ERROR_MODEL_FORWARD] {e_model}")
 
             # noinspection PyUnresolvedReferences
             upmem_layers.profiler_end()
