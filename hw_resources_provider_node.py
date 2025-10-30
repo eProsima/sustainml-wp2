@@ -17,6 +17,12 @@ from sustainml_py.nodes.HardwareResourcesNode import HardwareResourcesNode
 from rptu_framework import integration as rptu_integration
 from transformers import (AutoConfig, AutoTokenizer, AutoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM)
 
+import onnx
+import sys, os
+sys.path.insert(0, os.path.expanduser('~/SustainML/SustainML_ws/src/sustainml_framework/src'))
+from hw_provider_fpga.fpga_predictor_adapter import predict_latency_power
+import hw_provider_fpga
+
 # Managing UPMEMEM LLM
 import upmem_llm_framework as upmem_layers
 import transformers
@@ -193,6 +199,31 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
         except Exception:
             model_path = ""
 
+    model_family = "Transformers"
+    # Try to read model_family from hw_constraints.extra_data
+    try:
+        b = hw_constraints.extra_data()
+        if b:
+            d = json.loads(bytes(b).decode('utf-8'))
+            model_family = d.get("model_family", model_family)
+    except Exception as e:
+        print(f"[WARN] extra_data parse error: {e}")
+
+    # Optional fallback: if still default, try ml_model.extra_data
+    if model_family == "Transformers":
+        try:
+            b2 = ml_model.extra_data()
+            if b2:
+                d2 = json.loads(bytes(b2).decode('utf-8'))
+                model_family = d2.get("model_family", model_family)
+        except Exception:
+            pass
+
+    print(f"[INFO] model_family selected by user: {model_family}")
+
+    mf = (model_family or '').strip().lower()
+    is_cnn = mf == 'cnn' or mf == 'cnns' or mf.startswith('cnn')
+
     # Use RPTU hw predictor for their devices
     if hw_selected in ["Zynq UltraScale+ ZCU102", "Zynq UltraScale+ ZCU104", "Ultra96-V2", "TySOM-3A-ZU19EG"]:
         print("Using ONNX model path")
@@ -206,6 +237,62 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
         except Exception as e:
             print(f"[ERROR] Failed to load/run ONNX at '{model_path}': {e}.")
+
+    # Use DFKI predictor for xczu19eg target (only when user selected CNNs)
+    elif is_cnn and hw_selected == "FPGA (xczu19eg-ffvb1517-2-i)":
+        try:
+            # 1) Pick an ONNX to use
+            candidates = []
+            if isinstance(model_path, str) and model_path.endswith(".onnx") and os.path.isfile(model_path):
+                candidates.append(model_path)
+
+            # Vendored test models (if any)
+            vendored_dir = os.path.join(os.path.dirname(hw_provider_fpga.__file__), "vendor", "sustain_ml_predictor", "unet_models")
+            vendored_dir = os.path.abspath(vendored_dir)
+            if os.path.isdir(vendored_dir):
+                for f in os.listdir(vendored_dir):
+                    if f.endswith(".onnx"):
+                        candidates.append(os.path.join(vendored_dir, f))
+
+            # Fallback to the existing rptu sample ONNX if available
+            if os.path.isfile(rptu_model):
+                candidates.append(rptu_model)
+
+            if not candidates:
+                raise FileNotFoundError("No ONNX file available for FPGA prediction. "
+                                        "Provide an ONNX CNN (U-Net) in the model step or vendor one into unet_models/.")
+
+            onnx_to_use = candidates[0]
+
+            # 2) Quick CNN check: must contain Conv or ConvTranspose
+            m = onnx.load(onnx_to_use)
+            has_conv = any(n.op_type in ("Conv", "ConvTranspose") for n in m.graph.node)
+            if not has_conv:
+                raise ValueError(f"Selected ONNX '{onnx_to_use}' is not a CNN (no Conv/ConvTranspose). "
+                                "DFKI predictor is for U-Net-like CNNs.")
+
+            # 3) Run predictor
+            pred = predict_latency_power(onnx_to_use)
+            latency = float(pred.get("latency_ms", 0.0))
+            power_consumption = float(pred.get("power_w", 0.0))
+
+            # Attach full payload for backend/UI
+            try:
+                hw.extra_data(json.dumps(pred).encode("utf-8"))
+            except Exception:
+                pass
+
+            print(f"[DFKI FPGA] using {onnx_to_use}")
+            print(f"[DFKI FPGA] latency_ms={latency} power_w={power_consumption} energy_j={pred.get('energy_j')}")
+
+        except Exception as e:
+            print(f"[ERROR][DFKI FPGA] {e}")
+            latency = 0.0
+            power_consumption = 0.0
+
+    # If an FPGA device was selected but model_family is not CNNs, warn in logs
+    elif not is_cnn and hw_selected == "FPGA (xczu19eg-ffvb1517-2-i)":
+        print("[INFO] FPGA device selected but model_family != CNNs -> skipping FPGA predictor and falling back.")
 
     # Use UPMEM hw simulator
     else:
@@ -344,6 +431,7 @@ def configuration_callback(req, res):
 
             # Extract the hardware names
             hardware_names = list(upmem_devices.keys()) + list(rptu_devices.keys())
+            hardware_names.append("FPGA (xczu19eg-ffvb1517-2-i)")  # Expose the DFKI FPGA predictor device
 
             if not hardware_names:
                 res.success(False)
@@ -353,7 +441,7 @@ def configuration_callback(req, res):
                 res.err_code(0)  # 0: No error || 1: Error
             sorted_architectures = sorted(list(upmem_devices.keys()))
             sorted_rptu_devices = sorted(list(rptu_devices.keys()))
-            sorted_hardware_names = ', '.join(sorted_architectures + sorted_rptu_devices)
+            sorted_hardware_names = ', '.join(sorted_architectures + sorted_rptu_devices + ["FPGA (xczu19eg-ffvb1517-2-i)"])
             print(f"Available Hardwares: {sorted_hardware_names}")
             res.configuration(json.dumps(dict(hardwares=sorted_hardware_names)))
 

@@ -42,26 +42,39 @@ def task_callback(user_input, node_status, hw_constraints):
     hw_req = "PIM_AI_1chip"
     mem_footprint = 100
 
-    # Check if extra data has been sent
+    # Check if extra data has been sent and preserve ALL fields (hf_token, model_family, …)
+    incoming = {}
     if user_input.extra_data().size() != 0:
-        buffer = ctypes.c_ubyte * user_input.extra_data().size()
-        buffer = buffer.from_address(int(user_input.extra_data().get_buffer()))
-        extra_data = np.frombuffer(buffer, dtype=np.uint8)
-        extra_data_str = extra_data.tobytes().decode('utf-8', errors='ignore')
         try:
-            try:
-                json_obj = json.loads(extra_data_str)
-            except json.JSONDecodeError:
-                print("[WARN] In hw_constrains node extra_data JSON is not valid.")
-                json_obj = {}
-            if json_obj is not None:
-                mem_footprint = int(json_obj["max_memory_footprint"])
-                hw_req = json_obj["hardware_required"]
-                hf_token = json_obj["hf_token"]
-                encoded_data = json.dumps({"hf_token": hf_token}).encode("utf-8")
-                hw_constraints.extra_data(encoded_data)
-        except:
-            print("Extra data is not a valid JSON object, using default values")
+            buffer = ctypes.c_ubyte * user_input.extra_data().size()
+            buffer = buffer.from_address(int(user_input.extra_data().get_buffer()))
+            extra_data = np.frombuffer(buffer, dtype=np.uint8)
+            extra_data_bytes = extra_data.tobytes()
+            extra_data_str = extra_data_bytes.decode('utf-8', errors='ignore')
+            incoming = json.loads(extra_data_str) if extra_data_str else {}
+        except Exception as e:
+            print("[HW_CONSTRAINTS] WARN: could not decode extra_data from user_input:", e)
+            incoming = {}
+
+    # Pull values (use defaults if missing)
+    mem_footprint = int(incoming.get("max_memory_footprint", mem_footprint))
+    hw_req = incoming.get("hardware_required", hw_req)
+    hf_token = incoming.get("hf_token")
+    model_family = incoming.get("model_family")
+
+    # Build outgoing extra_data preserving everything we received
+    out_extra = dict(incoming)  # copy
+    if hf_token is not None:
+        out_extra["hf_token"] = hf_token
+    if model_family is not None:
+        out_extra["model_family"] = model_family
+
+    # Forward the full extra_data downstream so HW_RESOURCES can read model_family
+    try:
+        hw_constraints.extra_data(json.dumps(out_extra).encode("utf-8"))
+        print("[HW_CONSTRAINTS] forwarding extra_data ->", out_extra)
+    except Exception as e:
+        print("[HW_CONSTRAINTS] WARN: cannot set hw_constraints.extra_data:", e)
 
     # TODO parse other possible data hidden in the extra_data field, if any
     # TODO populate the hw_constraints object with the required data
