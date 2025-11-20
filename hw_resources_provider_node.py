@@ -50,7 +50,7 @@ def load_any_model(model_name, hf_token=None, unsupported_models=None, **kwargs)
 
     try:
         config = AutoConfig.from_pretrained(model_name, trust_remote_code=True, token=hf_token)
-        print(f"Model configuration loaded: {config}")
+        # print(f"Model configuration loaded: {config}")
         is_seq2seq = getattr(config, "is_encoder_decoder", False)
 
         if is_seq2seq:
@@ -90,14 +90,12 @@ def load_any_model(model_name, hf_token=None, unsupported_models=None, **kwargs)
 
     for label, token_class, extra_args in available_token_classes:
         try:
-            print(f"Try token loaded as {label}")
             tokenizer = token_class.from_pretrained(
                 model_name,
                 token=hf_token,
                 trust_remote_code=True,
                 **{**extra_args, **kwargs}
             )
-            print("[OK]")
             break
         except Exception as e:
             print(f"[WARN] Could not load token as {label}: {e}")
@@ -273,7 +271,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
             # 3) Run predictor
             pred = predict_latency_power(onnx_to_use)
-            latency = float(pred.get("latency_ms", 0.0))
+            latency = float(pred.get("latency_h", 0.0))
             power_consumption = float(pred.get("power_w", 0.0))
 
             # Attach full payload for backend/UI
@@ -283,7 +281,6 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                 pass
 
             print(f"[DFKI FPGA] using {onnx_to_use}")
-            print(f"[DFKI FPGA] latency_ms={latency} power_w={power_consumption} energy_j={pred.get('energy_j')}")
 
         except Exception as e:
             print(f"[ERROR][DFKI FPGA] {e}")
@@ -349,10 +346,6 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             last_layer = raw_last.split('.')[-1]
             print(f"Last layer for profiling: {last_layer}")  # debug
 
-            print("Mapped leaf modules:")
-            for k in (layer_mapping):  # debug
-                print("  ", k)
-
             model.eval()  # Put model in evaluation / inference mode
 
             # noinspection PyUnresolvedReferences
@@ -389,7 +382,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             upmem_layers.profiler_end()
 
             latency = upmem_layers.profiler_get_latency()
-            power_consumption = upmem_layers.profiler_get_power_consumption()
+            power_consumption = upmem_layers.profiler_get_power_consumption() * 1000  # from kW to W
 
         except Exception as e:
             import traceback
@@ -409,7 +402,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     hw.power_consumption(power_consumption)
     hw.latency(latency)
     print(f"Power Consumption: {power_consumption:.8f} W")
-    print(f"Latency: {latency} ms")
+    print(f"Latency: {latency}")
 
 
 # User Configuration Callback implementation
