@@ -15,18 +15,21 @@
 
 from sustainml_py.nodes.HardwareResourcesNode import HardwareResourcesNode
 from rptu_framework import integration as rptu_integration
-from transformers import (AutoConfig, AutoTokenizer, AutoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM)
+from transformers import (AutoConfig, AutoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM)
 
 import onnx
 import sys, os
-sys.path.insert(0, os.path.expanduser('~/SustainML/SustainML_ws/src/sustainml_framework/src'))
-from hw_provider_fpga.fpga_predictor_adapter import predict_latency_power
+HERE = os.path.dirname(__file__)
+
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+
 import hw_provider_fpga
+from hw_provider_fpga import predict_latency_energy
 
 # Managing UPMEMEM LLM
 import upmem_llm_framework as upmem_layers
 import transformers
-import os
 import signal
 import threading
 import time
@@ -270,7 +273,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                                 "DFKI predictor is for U-Net-like CNNs.")
 
             # 3) Run predictor
-            pred = predict_latency_power(onnx_to_use)
+            pred = predict_latency_energy(onnx_to_use)
             latency = float(pred.get("latency_h", 0.0))
             power_consumption = float(pred.get("power_w", 0.0))
 
@@ -286,10 +289,6 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             print(f"[ERROR][DFKI FPGA] {e}")
             latency = 0.0
             power_consumption = 0.0
-
-    # If an FPGA device was selected but model_family is not CNNs, warn in logs
-    elif not is_cnn and hw_selected == "FPGA (xczu19eg-ffvb1517-2-i)":
-        print("[INFO] FPGA device selected but model_family != CNNs -> skipping FPGA predictor and falling back.")
 
     # Use UPMEM hw simulator
     else:
@@ -382,7 +381,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             upmem_layers.profiler_end()
 
             latency = upmem_layers.profiler_get_latency()
-            power_consumption = upmem_layers.profiler_get_power_consumption() * 1000  # from kW to W
+            power_consumption = upmem_layers.profiler_get_power_consumption()
 
         except Exception as e:
             import traceback
