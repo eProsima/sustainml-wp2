@@ -306,8 +306,6 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                         extra_data_dict = {}
                 if "hf_token" in extra_data_dict:
                     hf_token = extra_data_dict["hf_token"]
-            if hf_token is None:
-                raise Exception("HF token was not provided. Please set the HF_TOKEN environment variable.")
 
             unsupported_models = None
             extra_data_bytes = ml_model.extra_data()
@@ -329,6 +327,21 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                 low_cpu_mem_usage=True,
                 torch_dtype=torch.float16
             )
+            if isinstance(model, str) and model.upper() == "NO_MODEL":
+                print("[INFO][hw] Skipping HW evaluation: NO_MODEL from model provider.")
+                hw.hw_description(hw_selected)
+                hw.power_consumption(0.0)
+                hw.latency(0.0)
+                try:
+                    error_info = {
+                        "error_code": "NO_MODEL",
+                        "error": "No model selected (NO_MODEL). HW resources not computed."
+                    }
+                    hw.extra_data(json.dumps(error_info).encode("utf-8"))
+                except Exception:
+                    pass
+                return
+
             print("Model, Tokenizer and Input loaded successfully")
             print(f"Model: {model}")
             print(f"Tokenizer: {tokenizer}")
