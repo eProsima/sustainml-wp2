@@ -14,12 +14,12 @@
 """DFKI FPGA Predictor Implementation."""
 
 import argparse
-import os
-import numpy as np
-import networkx as nx
 import json
+import networkx as nx
+import numpy as np
 import onnx
 import onnxruntime
+import os
 from collections import defaultdict
 
 VISUALIZE_MODEL=False
@@ -403,14 +403,12 @@ def extract_unet_info(onnx_model_path):
         "params": total_params
     }
 
-def predict(onnx_model_file, models_stats_file, prediction_model_file):
+def predict(onnx_model_file, models_stats_file, prediction_model_file, denormalizer):
 
     predictor = onnxruntime.InferenceSession(prediction_model_file, providers=['CPUExecutionProvider'])
 
     with open(models_stats_file, "r") as f:
-        stats = json.load(f)
-    print(f"[DFKI predictor] using stats file: {os.path.abspath(models_stats_file)}  "
-      f"(max_seq_len={stats.get('max_seq_len')}, exp_N_from_stats={stats.get('max_seq_len', -1)+1})")
+        models_stats = json.load(f)
 
     arch = extract_unet_info(onnx_model_file)
     arch_encoding = arch_encoding_unet(arch)
@@ -419,14 +417,14 @@ def predict(onnx_model_file, models_stats_file, prediction_model_file):
 
     # Have to be updated considering the statistics of the complete design space (all topologies)
     # The adjacency matrix and the node features are used as an input to Graph Convolutional Networks (GCN)
-    adj_matrix = update_adj_matrix(adj_matrix, stats)
-    node_features = update_node_features(node_features_, stats)
+    adj_matrix = update_adj_matrix(adj_matrix, models_stats)
+    node_features = update_node_features(node_features_, models_stats)
 
     adj_matrix = adj_matrix.astype(np.float32)
     node_features = node_features.astype(np.float32)
     arch_encoding = arch_encoding.astype(np.float32)
 
-    # Add batch dimension
+    # Add batch dimension (axis=0)
     adj_matrix = np.expand_dims(adj_matrix, axis=0)       # [1, N, N]
     node_features = np.expand_dims(node_features, axis=0) # [1, N, F]
     arch_encoding = np.expand_dims(arch_encoding, axis=0) # [1, D]
@@ -437,7 +435,49 @@ def predict(onnx_model_file, models_stats_file, prediction_model_file):
     output_name = predictor.get_outputs()[0].name  # Single output
     pred = predictor.run([output_name], inputs)[0]
 
+    pred = denormalizer(pred)
+
     return pred
+
+def get_denormalizer(metric, measurements_stats_file):
+    # Load stats
+    with open(measurements_stats_file, "r") as f:
+        stats = json.load(f)
+
+    # Extract stats according to metric specified
+    stats = stats[metric]
+
+    # The denormalization method
+    method = stats["method"]
+
+    # Define denormalizers
+    def denorm_log1p_11(x):
+        x = ((x + 1.0) / 2.0) * (stats['log1p_max'] - stats['log1p_min']) + stats['log1p_min']
+        return np.expm1(x)
+
+    def denorm_norm_11(x):
+        return ((x + 1.0) / 2.0) * (stats['max'] - stats['min']) + stats['min']
+
+    def denorm_log1p_mean_std(x):
+        x = x * stats['log1p_std'] + stats['log1p_mean']
+        return np.expm1(x)
+
+    def denorm_mean_std(x):
+        return x * stats['std'] + stats['mean']
+
+    def identity(x):
+        return x
+
+    # Select the correct one
+    mapping = {
+        "log1p_11":        denorm_log1p_11,
+        "norm_11":         denorm_norm_11,
+        "log1p_mean_std":  denorm_log1p_mean_std,
+        "mean_std":        denorm_mean_std
+    }
+
+    return mapping.get(method, identity)
+
 
 if __name__ == '__main__':
 
@@ -455,7 +495,10 @@ if __name__ == '__main__':
             "latency": "predictor_model_latency.onnx"
             }
     }
+
     prediction_model_file = os.path.join(args.device, predictors[args.device][args.metric])
-    pred = predict(args.model_file, args.models_stats_file, prediction_model_file)
+    measurements_stats_file = os.path.join(args.device, "measurements_stats.json")
+    denormalizer = get_denormalizer(args.metric, measurements_stats_file)
+    pred = predict(args.model_file, args.models_stats_file, prediction_model_file, denormalizer)
 
     print(f"Prediction of {args.metric} for {args.device}: {pred[0]}")

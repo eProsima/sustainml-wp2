@@ -1,8 +1,6 @@
 {"model_file": "unet_model_000.onnx", "input_channels": 3, "input_size": 64, "initial_channels": 8, "depth": 1, "kernel_sizes": [3, 3], "Mflops": 32.3584, "Mparams": 0.011353}
-{"model_file": "unet_model_001.onnx", "input_channels": 3, "input_size": 64, "initial_channels": 8, "depth": 1, "kernel_sizes": [3, 5], "Mflops": 40.747008, "Mparams": 0.019545}
 {"model_file": "unet_model_002.onnx", "input_channels": 3, "input_size": 64, "initial_channels": 8, "depth": 1, "kernel_sizes": [5, 3], "Mflops": 73.252864, "Mparams": 0.021337}
 {"model_file": "unet_model_003.onnx", "input_channels": 3, "input_size": 64, "initial_channels": 8, "depth": 1, "kernel_sizes": [5, 5], "Mflops": 81.641472, "Mparams": 0.029529}
-{"model_file": "unet_model_004.onnx", "input_channels": 3, "input_size": 64, "initial_channels": 16, "depth": 1, "kernel_sizes": [3, 3], "Mflops": 125.00992, "Mparams": 0.044337}
 {"model_file": "unet_model_005.onnx", "input_channels": 3, "input_size": 64, "initial_channels": 16, "depth": 1, "kernel_sizes": [3, 5], "Mflops": 158.564352, "Mparams": 0.077105}
 {"model_file": "unet_model_006.onnx", "input_channels": 3, "input_size": 64, "initial_channels": 16, "depth": 1, "kernel_sizes": [5, 3], "Mflops": 282.29632, "Mparams": 0.082737}
 {"model_file": "unet_model_007.onnx", "input_channels": 3, "input_size": 64, "initial_channels": 16, "depth": 1, "kernel_sizes": [5, 5], "Mflops": 315.850752, "Mparams": 0.115505}

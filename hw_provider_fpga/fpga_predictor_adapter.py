@@ -13,10 +13,10 @@
 # limitations under the License.
 """SustainML FPGA Predictor Adapter Implementation."""
 
-import os, hashlib
 import numpy as np
+import hashlib, os
 
-from .vendor.sustain_ml_predictor.predictor import predict  # vendored DFKI code
+from .vendor.sustain_ml_predictor.predictor import predict, get_denormalizer  # Vendored DFKI code
 
 HERE = os.path.dirname(__file__)
 PREDICTOR_HOME = os.path.join(HERE, "vendor", "sustain_ml_predictor")
@@ -50,26 +50,35 @@ def predict_latency_energy(onnx_model_path: str,
     edyn_path = os.path.join(device_dir, "predictor_model_energy_dynamic.onnx")
     eboard_path = os.path.join(device_dir, "predictor_model_energy_board_runtime.onnx")
 
-    for p in (stats_file, lat_path, edyn_path, eboard_path):
+    meas_stats_file = os.path.join(device_dir, "measurements_stats.json")
+
+    for p in (stats_file, lat_path, edyn_path, eboard_path, meas_stats_file):
         if not os.path.isfile(p):
             raise FileNotFoundError(f"Missing predictor asset: {p}")
 
     model_hash = _hash_file(onnx_model_path)
 
+    denorm_latency        = get_denormalizer("latency",            meas_stats_file)
+    denorm_energy_dynamic = get_denormalizer("energy_dynamic",     meas_stats_file)
+    denorm_energy_board   = get_denormalizer("energy_board_runtime", meas_stats_file)
+
     # Predict latency
     lat_pred = predict(onnx_model_file=onnx_model_path,
                         models_stats_file=stats_file,
-                        prediction_model_file=lat_path)
+                        prediction_model_file=lat_path,
+                        denormalizer=denorm_latency)
 
     # Predict dynamic energy
     edyn_pred = predict(onnx_model_file=onnx_model_path,
                         models_stats_file=stats_file,
-                        prediction_model_file=edyn_path)
+                        prediction_model_file=edyn_path,
+                        denormalizer=denorm_energy_dynamic)
 
     # Predict board runtime energy
     eboard_pred = predict(onnx_model_file=onnx_model_path,
                         models_stats_file=stats_file,
-                        prediction_model_file=eboard_path)
+                        prediction_model_file=eboard_path,
+                        denormalizer=denorm_energy_board)
 
     lat_h = float(np.array(lat_pred).reshape(-1)[0])               # hours
     energy_dynamic_Wh = float(np.array(edyn_pred).reshape(-1)[0])  # Wh
@@ -90,6 +99,7 @@ def predict_latency_energy(onnx_model_path: str,
         "energy_board_runtime_Wh": energy_board_Wh,
         "provenance": {
             "stats_file": os.path.relpath(stats_file, HERE),
+            "measurements_stats_file": os.path.relpath(meas_stats_file, HERE),
             "predictors": ["latency", "energy_dynamic", "energy_board_runtime"],
             "model_sha256": model_hash,
             "assets_dir": os.path.relpath(device_dir, HERE),

@@ -223,7 +223,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     print(f"[INFO] model_family selected by user: {model_family}")
 
     mf = (model_family or '').strip().lower()
-    is_cnn = mf == 'cnn' or mf == 'cnns' or mf.startswith('cnn')
+    is_cnn = mf.lower() == 'cnns'
 
     # Use RPTU hw predictor for their devices
     if hw_selected in ["Zynq UltraScale+ ZCU102", "Zynq UltraScale+ ZCU104", "Ultra96-V2", "TySOM-3A-ZU19EG"]:
@@ -347,7 +347,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
             model.eval()  # Put model in evaluation / inference mode
 
-            # noinspection PyUnresolvedReferences
+            # Noinspection PyUnresolvedReferences
             upmem_layers.profiler_start(
                 layer_mapping=layer_mapping,
                 last_layer=last_layer,
@@ -377,7 +377,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                 except Exception as e_model:
                     raise Exception(f"[ERROR_MODEL_FORWARD] {e_model}")
 
-            # noinspection PyUnresolvedReferences
+            # Noinspection PyUnresolvedReferences
             upmem_layers.profiler_end()
 
             latency = upmem_layers.profiler_get_latency()
