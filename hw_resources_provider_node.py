@@ -15,11 +15,21 @@
 
 from sustainml_py.nodes.HardwareResourcesNode import HardwareResourcesNode
 from rptu_framework import integration as rptu_integration
+from transformers import (AutoConfig, AutoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM)
+
+import onnx
+import sys, os
+HERE = os.path.dirname(__file__)
+
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+
+import hw_provider_fpga
+from hw_provider_fpga import predict_latency_energy
 
 # Managing UPMEMEM LLM
 import upmem_llm_framework as upmem_layers
 import transformers
-import os
 import signal
 import threading
 import time
@@ -36,35 +46,44 @@ def load_any_model(model_name, hf_token=None, unsupported_models=None, **kwargs)
 
     model = None
 
-    try:
-        config = transformers.AutoConfig.from_pretrained(model_name, trust_remote_code=True)
-        print(f"Model configuration loaded: {config}")
-        model_class = transformers.AutoModel._model_mapping.get(type(config), None)
+    # Skip hardware test if there is no model
+    if model_name.upper() == "NO_MODEL":
+        print("[INFO] Skipping HW evaluation: no model selected for this task.")
+        return "NO_MODEL", None, None
 
+    try:
+        config = AutoConfig.from_pretrained(model_name, trust_remote_code=True, token=hf_token)
+        # print(f"Model configuration loaded: {config}")
+        is_seq2seq = getattr(config, "is_encoder_decoder", False)
+
+        if is_seq2seq:
+            model = AutoModelForSeq2SeqLM.from_pretrained(
+                model_name, trust_remote_code=True, token=hf_token, **kwargs
+            )
+        else:
+            try:
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name, trust_remote_code=True, token=hf_token, **kwargs
+                )
+            except Exception:
+                model = AutoModel.from_pretrained(
+                    model_name, trust_remote_code=True, token=hf_token, **kwargs
+                )
+
+        # Guard unsupported list AFTER we have the actual class
         if unsupported_models is not None:
+            cls_name = type(model).__name__.lower()
             for unsupported in unsupported_models:
-                if unsupported.lower() in model_class.__name__.lower():
+                if unsupported.lower() in cls_name:
                     raise ValueError(f"[WARNING] Models that use '{unsupported}' are not supported.")
 
     except Exception as e:
-        raise Exception(f"[ERROR] Could not load model {model_name}: {e}")
-
-    try:
-        if model_class is None:
-            print(f"No model class found for config type: {type(config)}")
-            model = transformers.AutoModel.from_config(config)
-
-        else:
-            print(f"Model class found from config: {model_class.__name__}")
-
-            model = model_class(config)
-            print(f"Model class from config with config: {model}")
-    except Exception as e:
-        raise Exception(f"[ERROR] Could not load model {model_name}: {e}")
+        raise Exception(f"[ERROR_LOAD] Could not load model {model_name}: {e}")
 
     if model is None:
         raise Exception(f"Model {model_name} is not currently supported")
 
+    tokenizer = None
     available_token_classes = [
         ("Token", transformers.AutoTokenizer, {}),
         ("Image", transformers.AutoImageProcessor, {"use_fast": True}),
@@ -74,14 +93,12 @@ def load_any_model(model_name, hf_token=None, unsupported_models=None, **kwargs)
 
     for label, token_class, extra_args in available_token_classes:
         try:
-            print(f"Try token loaded as {label}")
             tokenizer = token_class.from_pretrained(
                 model_name,
                 token=hf_token,
                 trust_remote_code=True,
                 **{**extra_args, **kwargs}
             )
-            print("[OK]")
             break
         except Exception as e:
             print(f"[WARN] Could not load token as {label}: {e}")
@@ -183,6 +200,31 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
         except Exception:
             model_path = ""
 
+    model_family = "Transformers"
+    # Try to read model_family from hw_constraints.extra_data
+    try:
+        b = hw_constraints.extra_data()
+        if b:
+            d = json.loads(bytes(b).decode('utf-8'))
+            model_family = d.get("model_family", model_family)
+    except Exception as e:
+        print(f"[WARN] extra_data parse error: {e}")
+
+    # Optional fallback: if still default, try ml_model.extra_data
+    if model_family == "Transformers":
+        try:
+            b2 = ml_model.extra_data()
+            if b2:
+                d2 = json.loads(bytes(b2).decode('utf-8'))
+                model_family = d2.get("model_family", model_family)
+        except Exception:
+            pass
+
+    print(f"[INFO] model_family selected by user: {model_family}")
+
+    mf = (model_family or '').strip().lower()
+    is_cnn = mf.lower() == 'cnns'
+
     # Use RPTU hw predictor for their devices
     if hw_selected in ["Zynq UltraScale+ ZCU102", "Zynq UltraScale+ ZCU104", "Ultra96-V2", "TySOM-3A-ZU19EG"]:
         print("Using ONNX model path")
@@ -196,6 +238,57 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
         except Exception as e:
             print(f"[ERROR] Failed to load/run ONNX at '{model_path}': {e}.")
+
+    # Use DFKI predictor for xczu19eg target (only when user selected CNNs)
+    elif is_cnn and hw_selected == "FPGA (xczu19eg-ffvb1517-2-i)":
+        try:
+            # 1) Pick an ONNX to use
+            candidates = []
+            if isinstance(model_path, str) and model_path.endswith(".onnx") and os.path.isfile(model_path):
+                candidates.append(model_path)
+
+            # Vendored test models (if any)
+            vendored_dir = os.path.join(os.path.dirname(hw_provider_fpga.__file__), "vendor", "sustain_ml_predictor", "unet_models")
+            vendored_dir = os.path.abspath(vendored_dir)
+            if os.path.isdir(vendored_dir):
+                for f in os.listdir(vendored_dir):
+                    if f.endswith(".onnx"):
+                        candidates.append(os.path.join(vendored_dir, f))
+
+            # Fallback to the existing rptu sample ONNX if available
+            if os.path.isfile(rptu_model):
+                candidates.append(rptu_model)
+
+            if not candidates:
+                raise FileNotFoundError("No ONNX file available for FPGA prediction. "
+                                        "Provide an ONNX CNN (U-Net) in the model step or vendor one into unet_models/.")
+
+            onnx_to_use = candidates[0]
+
+            # 2) Quick CNN check: must contain Conv or ConvTranspose
+            m = onnx.load(onnx_to_use)
+            has_conv = any(n.op_type in ("Conv", "ConvTranspose") for n in m.graph.node)
+            if not has_conv:
+                raise ValueError(f"Selected ONNX '{onnx_to_use}' is not a CNN (no Conv/ConvTranspose). "
+                                "DFKI predictor is for U-Net-like CNNs.")
+
+            # 3) Run predictor
+            pred = predict_latency_energy(onnx_to_use)
+            latency = float(pred.get("latency_h", 0.0))
+            power_consumption = float(pred.get("power_w", 0.0))
+
+            # Attach full payload for backend/UI
+            try:
+                hw.extra_data(json.dumps(pred).encode("utf-8"))
+            except Exception:
+                pass
+
+            print(f"[DFKI FPGA] using {onnx_to_use}")
+
+        except Exception as e:
+            print(f"[ERROR][DFKI FPGA] {e}")
+            latency = 0.0
+            power_consumption = 0.0
 
     # Use UPMEM hw simulator
     else:
@@ -213,8 +306,6 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                         extra_data_dict = {}
                 if "hf_token" in extra_data_dict:
                     hf_token = extra_data_dict["hf_token"]
-            if hf_token is None:
-                raise Exception("HF token was not provided. Please set the HF_TOKEN environment variable.")
 
             unsupported_models = None
             extra_data_bytes = ml_model.extra_data()
@@ -236,6 +327,21 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                 low_cpu_mem_usage=True,
                 torch_dtype=torch.float16
             )
+            if isinstance(model, str) and model.upper() == "NO_MODEL":
+                print("[INFO][hw] Skipping HW evaluation: NO_MODEL from model provider.")
+                hw.hw_description(hw_selected)
+                hw.power_consumption(0.0)
+                hw.latency(0.0)
+                try:
+                    error_info = {
+                        "error_code": "NO_MODEL",
+                        "error": "No model selected (NO_MODEL). HW resources not computed."
+                    }
+                    hw.extra_data(json.dumps(error_info).encode("utf-8"))
+                except Exception:
+                    pass
+                return
+
             print("Model, Tokenizer and Input loaded successfully")
             print(f"Model: {model}")
             print(f"Tokenizer: {tokenizer}")
@@ -252,13 +358,9 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             last_layer = raw_last.split('.')[-1]
             print(f"Last layer for profiling: {last_layer}")  # debug
 
-            print("Mapped leaf modules:")
-            for k in (layer_mapping):  # debug
-                print("  ", k)
-
             model.eval()  # Put model in evaluation / inference mode
 
-            # noinspection PyUnresolvedReferences
+            # Noinspection PyUnresolvedReferences
             upmem_layers.profiler_start(
                 layer_mapping=layer_mapping,
                 last_layer=last_layer,
@@ -266,24 +368,29 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             # In case we want to time the original execution (comment out profiler_start)
             # start = time.time_ns()
 
+            # Safe, minimal workload for HW profiling
             try:
-                model.generate(
-                    **input, do_sample=True, temperature=0.9, min_length=64, max_length=64
-                )
-            except Exception as e_gen:
-                print(f"Error generating output with generate: {e_gen}. Trying forward instead.")
-                try:
+                # Attempt generation if supported
+                if hasattr(model, "generate"):
+                    model.generate(**input, do_sample=False, max_length=64)
+                else:
                     model(**input)
-                except Exception as e_model:
-                    print(f"Error generating output using model: {e_model}")
-                    if "decoder_input_ids" not in input and "input_ids" in input:
-                        input["decoder_input_ids"] = input["input_ids"]
-                    try:
-                        model(**input)
-                    except Exception as e_model2:
-                        raise Exception(e_model2)
+            except Exception as e_gen:
+                print(f"Error generating output with generate(): {e_gen}. Trying forward instead.")
 
-            # noinspection PyUnresolvedReferences
+                # Convert input to mutable dict
+                input_dict = dict(input)
+
+                # Add decoder inputs for seq2seq models
+                if "decoder_input_ids" not in input_dict and "input_ids" in input_dict:
+                    input_dict["decoder_input_ids"] = input_dict["input_ids"]
+
+                try:
+                    model(**input_dict)
+                except Exception as e_model:
+                    raise Exception(f"[ERROR_MODEL_FORWARD] {e_model}")
+
+            # Noinspection PyUnresolvedReferences
             upmem_layers.profiler_end()
 
             latency = upmem_layers.profiler_get_latency()
@@ -307,7 +414,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     hw.power_consumption(power_consumption)
     hw.latency(latency)
     print(f"Power Consumption: {power_consumption:.8f} W")
-    print(f"Latency: {latency} ms")
+    print(f"Latency: {latency}")
 
 
 # User Configuration Callback implementation
@@ -329,6 +436,7 @@ def configuration_callback(req, res):
 
             # Extract the hardware names
             hardware_names = list(upmem_devices.keys()) + list(rptu_devices.keys())
+            hardware_names.append("FPGA (xczu19eg-ffvb1517-2-i)")  # Expose the DFKI FPGA predictor device
 
             if not hardware_names:
                 res.success(False)
@@ -338,7 +446,7 @@ def configuration_callback(req, res):
                 res.err_code(0)  # 0: No error || 1: Error
             sorted_architectures = sorted(list(upmem_devices.keys()))
             sorted_rptu_devices = sorted(list(rptu_devices.keys()))
-            sorted_hardware_names = ', '.join(sorted_architectures + sorted_rptu_devices)
+            sorted_hardware_names = ', '.join(sorted_architectures + sorted_rptu_devices + ["FPGA (xczu19eg-ffvb1517-2-i)"])
             print(f"Available Hardwares: {sorted_hardware_names}")
             res.configuration(json.dumps(dict(hardwares=sorted_hardware_names)))
 
