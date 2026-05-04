@@ -17,7 +17,6 @@ from sustainml_py.nodes.HardwareResourcesNode import HardwareResourcesNode
 from rptu_framework import integration as rptu_integration
 from transformers import (AutoConfig, AutoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM)
 
-import onnx
 import sys, os
 HERE = os.path.dirname(__file__)
 
@@ -91,6 +90,7 @@ def load_any_model(model_name, hf_token=None, unsupported_models=None, **kwargs)
         ("Processor", transformers.AutoProcessor, {})
     ]
 
+    last_tok_err = None
     for label, token_class, extra_args in available_token_classes:
         try:
             tokenizer = token_class.from_pretrained(
@@ -99,12 +99,16 @@ def load_any_model(model_name, hf_token=None, unsupported_models=None, **kwargs)
                 trust_remote_code=True,
                 **{**extra_args, **kwargs}
             )
+            last_tok_err = None
             break
-        except Exception as e:
-            print(f"[WARN] Could not load token as {label}: {e}")
+        except Exception as err:
+            last_tok_err = err
+            tokenizer = None
 
     if tokenizer is None:
-        raise Exception(f"Error initializing tokenizer for model {model_name}: {e}")
+        raise Exception(
+            f"Error initializing tokenizer for model {model_name}: {last_tok_err}"
+        ) from last_tok_err
 
     input = None
     try:
@@ -265,14 +269,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
             onnx_to_use = candidates[0]
 
-            # 2) Quick CNN check: must contain Conv or ConvTranspose
-            m = onnx.load(onnx_to_use)
-            has_conv = any(n.op_type in ("Conv", "ConvTranspose") for n in m.graph.node)
-            if not has_conv:
-                raise ValueError(f"Selected ONNX '{onnx_to_use}' is not a CNN (no Conv/ConvTranspose). "
-                                "DFKI predictor is for U-Net-like CNNs.")
-
-            # 3) Run predictor
+            # 2) Run predictor
             pred = predict_latency_energy(onnx_to_use)
             latency = float(pred.get("latency_h", 0.0))
             power_consumption = float(pred.get("power_w", 0.0))
