@@ -52,7 +52,6 @@ def load_any_model(model_name, hf_token=None, unsupported_models=None, **kwargs)
 
     try:
         config = AutoConfig.from_pretrained(model_name, trust_remote_code=True, token=hf_token)
-        # print(f"Model configuration loaded: {config}")
         is_seq2seq = getattr(config, "is_encoder_decoder", False)
 
         if is_seq2seq:
@@ -227,7 +226,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     print(f"[INFO] model_family selected by user: {model_family}")
 
     mf = (model_family or '').strip().lower()
-    is_cnn = mf.lower() == 'cnns'
+    is_cnn = mf == 'cnns'
 
     # Use RPTU hw predictor for their devices
     if hw_selected in ["Zynq UltraScale+ ZCU102", "Zynq UltraScale+ ZCU104", "Ultra96-V2", "TySOM-3A-ZU19EG"]:
@@ -237,7 +236,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             results = rptu_integration.onnx_ml_resource_estimation(rptu_model, hw_selected) # TODO: hw_selected should affect predictor
             print(f"RPTU latency results: {results['Latency']}")
             print(f"RPTU power consumption results: {results['Run_power']}")
-            latency = results['Latency']
+            latency = results['Latency'] / 3600.0  # RPTU returns seconds; WP3 expects hours
             power_consumption = results['Run_power']
 
         except Exception as e:
@@ -353,7 +352,6 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
             raw_last = list(layer_mapping.keys())[-1]
             last_layer = raw_last.split('.')[-1]
-            print(f"Last layer for profiling: {last_layer}")  # debug
 
             model.eval()  # Put model in evaluation / inference mode
 
@@ -444,7 +442,6 @@ def configuration_callback(req, res):
             sorted_architectures = sorted(list(upmem_devices.keys()))
             sorted_rptu_devices = sorted(list(rptu_devices.keys()))
             sorted_hardware_names = ', '.join(sorted_architectures + sorted_rptu_devices + ["FPGA (xczu19eg-ffvb1517-2-i)"])
-            print(f"Available Hardwares: {sorted_hardware_names}")
             res.configuration(json.dumps(dict(hardwares=sorted_hardware_names)))
 
         except Exception as e:
