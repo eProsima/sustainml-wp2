@@ -1,4 +1,4 @@
-# Copyright 2023 SustainML Consortium
+# Copyright 2026 SustainML Consortium
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -72,12 +72,8 @@ def task_callback(user_input, node_status, hw_constraints):
     # Forward the full extra_data downstream so HW_RESOURCES can read model_family
     try:
         hw_constraints.extra_data(json.dumps(out_extra).encode("utf-8"))
-        print("[HW_CONSTRAINTS] forwarding extra_data ->", out_extra)
     except Exception as e:
         print("[HW_CONSTRAINTS] WARN: cannot set hw_constraints.extra_data:", e)
-
-    # TODO parse other possible data hidden in the extra_data field, if any
-    # TODO populate the hw_constraints object with the required data
 
     hw_constraints.max_memory_footprint(mem_footprint)
     hw_constraints.hardware_required([hw_req])
