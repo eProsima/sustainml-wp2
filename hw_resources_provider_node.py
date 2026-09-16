@@ -26,6 +26,9 @@ if HERE not in sys.path:
 import hw_provider_fpga
 from hw_provider_fpga import predict_latency_energy
 
+import hw_provider_axelera
+from hw_provider_axelera import predict_latency_power as axelera_predict_latency_power
+
 # Managing UPMEMEM LLM
 import upmem_llm_framework as upmem_layers
 import transformers
@@ -286,6 +289,52 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             latency = 0.0
             power_consumption = 0.0
 
+    # Use Axelera Metis datasheet-based estimator (no physical board yet;
+    # see hw_provider_axelera/axelera_predictor.py for what this covers)
+    elif hw_selected == "Axelera Edge 130p":
+        try:
+            hf_token = None
+            extra_data_bytes = hw_constraints.extra_data()
+            if extra_data_bytes:
+                extra_data_str = ''.join(chr(b) for b in extra_data_bytes)
+                if extra_data_str:
+                    try:
+                        extra_data_dict = json.loads(extra_data_str)
+                        hf_token = extra_data_dict.get("hf_token")
+                    except json.JSONDecodeError:
+                        print("[WARN] In hw_provider node extra_data JSON is not valid.")
+
+            model, _tokenizer, _input = load_any_model(
+                ml_model.model(),
+                hf_token=hf_token,
+                low_cpu_mem_usage=True,
+                torch_dtype=torch.float16
+            )
+            if isinstance(model, str) and model.upper() == "NO_MODEL":
+                print("[INFO][hw] Skipping HW evaluation: NO_MODEL from model provider.")
+                hw.hw_description(hw_selected)
+                hw.power_consumption(0.0)
+                hw.latency(0.0)
+                return
+
+            pred = axelera_predict_latency_power(model, hw_selected)
+            latency = float(pred["latency_h"])
+            power_consumption = float(pred["power_w"])
+
+            try:
+                hw.extra_data(json.dumps(pred).encode("utf-8"))
+            except Exception:
+                pass
+
+            print(f"[Axelera] {hw_selected} estimate (datasheet-based, no board): {pred}")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"[ERROR][Axelera] {e}")
+            latency = 0.0
+            power_consumption = 0.0
+
     # Use UPMEM hw simulator
     else:
         try:
@@ -429,8 +478,10 @@ def configuration_callback(req, res):
             with open(os.path.dirname(__file__)+'/rptu_framework/rptu_devices.yaml', 'r') as file:
                 rptu_devices = yaml.safe_load(file)
 
+            axelera_devices = hw_provider_axelera.get_devices()
+
             # Extract the hardware names
-            hardware_names = list(upmem_devices.keys()) + list(rptu_devices.keys())
+            hardware_names = list(upmem_devices.keys()) + list(rptu_devices.keys()) + list(axelera_devices.keys())
             hardware_names.append("FPGA (xczu19eg-ffvb1517-2-i)")  # Expose the DFKI FPGA predictor device
 
             if not hardware_names:
@@ -441,7 +492,10 @@ def configuration_callback(req, res):
                 res.err_code(0)  # 0: No error || 1: Error
             sorted_architectures = sorted(list(upmem_devices.keys()))
             sorted_rptu_devices = sorted(list(rptu_devices.keys()))
-            sorted_hardware_names = ', '.join(sorted_architectures + sorted_rptu_devices + ["FPGA (xczu19eg-ffvb1517-2-i)"])
+            sorted_axelera_devices = sorted(list(axelera_devices.keys()))
+            sorted_hardware_names = ', '.join(
+                sorted_architectures + sorted_rptu_devices + sorted_axelera_devices + ["FPGA (xczu19eg-ffvb1517-2-i)"]
+            )
             res.configuration(json.dumps(dict(hardwares=sorted_hardware_names)))
 
         except Exception as e:
