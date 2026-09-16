@@ -1,0 +1,1214 @@
+{
+  "_comment": [
+    "YOLO models of the Axelera Voyager SDK model zoo that SustainML offers for CNNs on the Axelera board.",
+    "reference: accuracy (COCO mAP etc., fp32 and the int8 loss) and FPS published by Axelera for the PCIe card.",
+    "measured: on our Axelera Edge 130p and from the model's ONNX file (onnx_url), see \"measurement\":",
+    "  latency_s      time of one inference, one input processed alone, as for every hardware in SustainML",
+    "  full_load_fps  inferences per second with all AIPU cores busy (the board's throughput)",
+    "  memory_mb      weights_mb + working_mb, computed as for every model in SustainML (model_memory.py)",
+    "  power_w        null: this board revision has no power sensor",
+    "null values are placeholders that yolo_catalog.resources() fills, saying so in its \"source\".",
+    "import_measurements.py puts new measurements in this file."
+  ],
+  "hardware": "Axelera Edge 130p",
+  "sdk_version": "1.7.0 (measurements); model zoo of SDK 1.7.0/1.8.0 (identical for these 36 models)",
+  "goals": {
+    "object-detection": {
+      "description": "Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "outputs": "bounding boxes, class labels, confidence scores",
+      "dataset": "COCO2017",
+      "classes": "80 everyday object classes (person, car, bus, bicycle, dog, cup, ...)"
+    },
+    "oriented-object-detection": {
+      "description": "Detect objects with rotated (oriented) bounding boxes, for objects seen from above at any angle such as in aerial, drone or satellite images (planes, ships, vehicles, storage tanks).",
+      "outputs": "rotated bounding boxes, class labels, confidence scores",
+      "dataset": "DOTAv1",
+      "classes": "15 aerial classes (plane, ship, storage tank, harbor, bridge, large/small vehicle, ...)"
+    },
+    "instance-segmentation": {
+      "description": "Detect each object and outline it with a pixel mask, separating individual instances of the same class (each person, each car).",
+      "outputs": "per-object pixel masks, bounding boxes, class labels, confidence scores",
+      "dataset": "COCO2017",
+      "classes": "80 everyday object classes"
+    },
+    "semantic-segmentation": {
+      "description": "Label every pixel of a street or driving scene with its class (road, sidewalk, car, person, building, vegetation, sky), without separating individual objects.",
+      "outputs": "per-pixel class map",
+      "dataset": "Cityscapes",
+      "classes": "19 urban street-scene classes"
+    },
+    "keypoint-detection": {
+      "description": "Estimate human body pose: detect each person and locate their body keypoints (nose, eyes, shoulders, elbows, wrists, hips, knees, ankles).",
+      "outputs": "person bounding boxes and 17 body keypoints per person",
+      "dataset": "COCO2017",
+      "classes": "person, 17 COCO keypoints"
+    }
+  },
+  "models": [
+    {
+      "name": "yolo11n-coco-onnx",
+      "display_name": "YOLO11n",
+      "architecture": "YOLO11",
+      "size": "n",
+      "goal": "object-detection",
+      "description": "YOLO11n (nano) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 39.17,
+        "int8_loss": 0.71,
+        "int8": 38.46
+      },
+      "reference": {
+        "pcie_fps": 759.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.006656,
+        "full_load_fps": 725.9,
+        "weights_mb": 9.98,
+        "working_mb": 18.75,
+        "memory_mb": 28.73,
+        "parameters": 2616248,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11n.onnx",
+      "onnx_md5": "d00108b1a46170499d67a80825531d26"
+    },
+    {
+      "name": "yolo11s-coco-onnx",
+      "display_name": "YOLO11s",
+      "architecture": "YOLO11",
+      "size": "s",
+      "goal": "object-detection",
+      "description": "YOLO11s (small) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 46.54,
+        "int8_loss": 0.55,
+        "int8": 45.99
+      },
+      "reference": {
+        "pcie_fps": 565.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.008703,
+        "full_load_fps": 533.4,
+        "weights_mb": 36.03,
+        "working_mb": 37.5,
+        "memory_mb": 73.53,
+        "parameters": 9443804,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11s.onnx",
+      "onnx_md5": "1acf9436adb299ff370b94feec8b28c2"
+    },
+    {
+      "name": "yolo11m-coco-onnx",
+      "display_name": "YOLO11m",
+      "architecture": "YOLO11",
+      "size": "m",
+      "goal": "object-detection",
+      "description": "YOLO11m (medium) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 51.31,
+        "int8_loss": 0.55,
+        "int8": 50.76
+      },
+      "reference": {
+        "pcie_fps": 269.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.016447,
+        "full_load_fps": 261.3,
+        "weights_mb": 76.64,
+        "working_mb": 75.0,
+        "memory_mb": 151.64,
+        "parameters": 20091754,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11m.onnx",
+      "onnx_md5": "8385c5e22f0d91eb20133afd021852c5"
+    },
+    {
+      "name": "yolo11l-coco-onnx",
+      "display_name": "YOLO11l",
+      "architecture": "YOLO11",
+      "size": "l",
+      "goal": "object-detection",
+      "description": "YOLO11l (large) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 53.23,
+        "int8_loss": 0.49,
+        "int8": 52.74
+      },
+      "reference": {
+        "pcie_fps": 183.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.020906,
+        "full_load_fps": 177.8,
+        "weights_mb": 96.67,
+        "working_mb": 75.0,
+        "memory_mb": 171.67,
+        "parameters": 25341034,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11l.onnx",
+      "onnx_md5": "25f89c87c02e08e2db4c93245c74e6e8"
+    },
+    {
+      "name": "yolo11x-coco-onnx",
+      "display_name": "YOLO11x",
+      "architecture": "YOLO11",
+      "size": "x",
+      "goal": "object-detection",
+      "description": "YOLO11x (extra large) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 54.67,
+        "int8_loss": 0.58,
+        "int8": 54.09
+      },
+      "reference": {
+        "pcie_fps": 53.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.054645,
+        "full_load_fps": 53.5,
+        "weights_mb": 217.13,
+        "working_mb": 112.5,
+        "memory_mb": 329.63,
+        "parameters": 56919467,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11x.onnx",
+      "onnx_md5": "e054f563a804240c70d9b52026d9a6cf"
+    },
+    {
+      "name": "yolo26n-coco-onnx",
+      "display_name": "YOLO26n",
+      "architecture": "YOLO26",
+      "size": "n",
+      "goal": "object-detection",
+      "description": "YOLO26n (nano) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 40.18,
+        "int8_loss": 1.95,
+        "int8": 38.23
+      },
+      "reference": {
+        "pcie_fps": 662.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.008217,
+        "full_load_fps": 630.0,
+        "weights_mb": 9.35,
+        "working_mb": 18.75,
+        "memory_mb": 28.1,
+        "parameters": 2450977,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26n-202601-official.onnx",
+      "onnx_md5": "ceafc44740a79eb7e6e03ecb8999698b"
+    },
+    {
+      "name": "yolo26s-coco-onnx",
+      "display_name": "YOLO26s",
+      "architecture": "YOLO26",
+      "size": "s",
+      "goal": "object-detection",
+      "description": "YOLO26s (small) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 47.66,
+        "int8_loss": 2.05,
+        "int8": 45.61
+      },
+      "reference": {
+        "pcie_fps": 498.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.009839,
+        "full_load_fps": 481.6,
+        "weights_mb": 36.39,
+        "working_mb": 37.5,
+        "memory_mb": 73.89,
+        "parameters": 9538185,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26s-202601-official.onnx",
+      "onnx_md5": "325db67dc0ae2b88cf506f86f29602cb"
+    },
+    {
+      "name": "yolo26m-coco-onnx",
+      "display_name": "YOLO26m",
+      "architecture": "YOLO26",
+      "size": "m",
+      "goal": "object-detection",
+      "description": "YOLO26m (medium) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 52.45,
+        "int8_loss": 2.14,
+        "int8": 50.31
+      },
+      "reference": {
+        "pcie_fps": 258.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.016873,
+        "full_load_fps": 251.4,
+        "weights_mb": 78.02,
+        "working_mb": 75.0,
+        "memory_mb": 153.02,
+        "parameters": 20453175,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26m-202601-official.onnx",
+      "onnx_md5": "65c1c818f42cedfbd0d7329f0339e73e"
+    },
+    {
+      "name": "yolo26l-coco-onnx",
+      "display_name": "YOLO26l",
+      "architecture": "YOLO26",
+      "size": "l",
+      "goal": "object-detection",
+      "description": "YOLO26l (large) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 54.11,
+        "int8_loss": 2.03,
+        "int8": 52.08
+      },
+      "reference": {
+        "pcie_fps": 179.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.022173,
+        "full_load_fps": 173.7,
+        "weights_mb": 94.79,
+        "working_mb": 75.0,
+        "memory_mb": 169.79,
+        "parameters": 24849463,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26l-202601-official.onnx",
+      "onnx_md5": "c470ba4bd94a570ab8e3000a9b7d8aee"
+    },
+    {
+      "name": "yolo26x-coco-onnx",
+      "display_name": "YOLO26x",
+      "architecture": "YOLO26",
+      "size": "x",
+      "goal": "object-detection",
+      "description": "YOLO26x (extra large) object detection model, 640x640 input, trained on COCO2017, 80 everyday object classes (person, car, bus, bicycle, dog, cup, ...). Find and classify objects in an image or video frame, returning an axis-aligned bounding box, class and confidence for each one (people, vehicles, animals, everyday objects).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 56.92,
+        "int8_loss": 2.43,
+        "int8": 54.49
+      },
+      "reference": {
+        "pcie_fps": 53.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.061856,
+        "full_load_fps": 52.4,
+        "weights_mb": 212.74,
+        "working_mb": 112.5,
+        "memory_mb": 325.24,
+        "parameters": 55767991,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26x-202601-official.onnx",
+      "onnx_md5": "5fb1fc33b3909cdd44564e4c628e8a15"
+    },
+    {
+      "name": "yolo11n-obb-dotav1-onnx",
+      "display_name": "YOLO11n-obb",
+      "architecture": "YOLO11",
+      "size": "n",
+      "goal": "oriented-object-detection",
+      "description": "YOLO11n (nano) oriented object detection model, 1024x1024 input, trained on DOTAv1, 15 aerial classes (plane, ship, storage tank, harbor, bridge, large/small vehicle, ...). Detect objects with rotated (oriented) bounding boxes, for objects seen from above at any angle such as in aerial, drone or satellite images (planes, ships, vehicles, storage tanks).",
+      "dataset": "DOTAv1",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 50.01,
+        "int8_loss": 1.07,
+        "int8": 48.94
+      },
+      "reference": {
+        "pcie_fps": 250.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.014888,
+        "full_load_fps": 245.1,
+        "weights_mb": 10.38,
+        "working_mb": 48.0,
+        "memory_mb": 58.38,
+        "parameters": 2721206,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11n-obb-ultralytics.onnx",
+      "onnx_md5": "69e27a17b964fcc66a3e4a09e0a40b0d"
+    },
+    {
+      "name": "yolo11l-obb-dotav1-onnx",
+      "display_name": "YOLO11l-obb",
+      "architecture": "YOLO11",
+      "size": "l",
+      "goal": "oriented-object-detection",
+      "description": "YOLO11l (large) oriented object detection model, 1024x1024 input, trained on DOTAv1, 15 aerial classes (plane, ship, storage tank, harbor, bridge, large/small vehicle, ...). Detect objects with rotated (oriented) bounding boxes, for objects seen from above at any angle such as in aerial, drone or satellite images (planes, ships, vehicles, storage tanks).",
+      "dataset": "DOTAv1",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 56.41,
+        "int8_loss": 1.08,
+        "int8": 55.33
+      },
+      "reference": {
+        "pcie_fps": 36.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.05988,
+        "full_load_fps": 35.5,
+        "weights_mb": 99.71,
+        "working_mb": 192.0,
+        "memory_mb": 291.71,
+        "parameters": 26139374,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11l-obb.onnx",
+      "onnx_md5": "18097fc96b0c4c8c51d2f0bcf98ac427"
+    },
+    {
+      "name": "yolo26n-obb-dotav1-onnx",
+      "display_name": "YOLO26n-obb",
+      "architecture": "YOLO26",
+      "size": "n",
+      "goal": "oriented-object-detection",
+      "description": "YOLO26n (nano) oriented object detection model, 1024x1024 input, trained on DOTAv1, 15 aerial classes (plane, ship, storage tank, harbor, bridge, large/small vehicle, ...). Detect objects with rotated (oriented) bounding boxes, for objects seen from above at any angle such as in aerial, drone or satellite images (planes, ships, vehicles, storage tanks).",
+      "dataset": "DOTAv1",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 49.41,
+        "int8_loss": 3.12,
+        "int8": 46.29
+      },
+      "reference": {
+        "pcie_fps": 206.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.017281,
+        "full_load_fps": 202.2,
+        "weights_mb": 9.34,
+        "working_mb": 48.0,
+        "memory_mb": 57.34,
+        "parameters": 2449390,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26n-obb-202602-official.onnx",
+      "onnx_md5": "b69118da67073c181b22c073283f1389"
+    },
+    {
+      "name": "yolo26s-obb-dotav1-onnx",
+      "display_name": "YOLO26s-obb",
+      "architecture": "YOLO26",
+      "size": "s",
+      "goal": "oriented-object-detection",
+      "description": "YOLO26s (small) oriented object detection model, 1024x1024 input, trained on DOTAv1, 15 aerial classes (plane, ship, storage tank, harbor, bridge, large/small vehicle, ...). Detect objects with rotated (oriented) bounding boxes, for objects seen from above at any angle such as in aerial, drone or satellite images (planes, ships, vehicles, storage tanks).",
+      "dataset": "DOTAv1",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 54.02,
+        "int8_loss": 2.01,
+        "int8": 52.01
+      },
+      "reference": {
+        "pcie_fps": 167.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.023328,
+        "full_load_fps": 162.2,
+        "weights_mb": 37.22,
+        "working_mb": 96.0,
+        "memory_mb": 133.22,
+        "parameters": 9757031,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26s-obb-202602-official.onnx",
+      "onnx_md5": "2f2f9a26f7f736849450a7c58b794fd8"
+    },
+    {
+      "name": "yolo26m-obb-dotav1-onnx",
+      "display_name": "YOLO26m-obb",
+      "architecture": "YOLO26",
+      "size": "m",
+      "goal": "oriented-object-detection",
+      "description": "YOLO26m (medium) oriented object detection model, 1024x1024 input, trained on DOTAv1, 15 aerial classes (plane, ship, storage tank, harbor, bridge, large/small vehicle, ...). Detect objects with rotated (oriented) bounding boxes, for objects seen from above at any angle such as in aerial, drone or satellite images (planes, ships, vehicles, storage tanks).",
+      "dataset": "DOTAv1",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 56.66,
+        "int8_loss": 1.72,
+        "int8": 54.94
+      },
+      "reference": {
+        "pcie_fps": 58.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.044118,
+        "full_load_fps": 57.1,
+        "weights_mb": 80.91,
+        "working_mb": 192.0,
+        "memory_mb": 272.91,
+        "parameters": 21209525,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26m-obb-202602-official.onnx",
+      "onnx_md5": "70c7cb9b15493cb41e926ac2523a822f"
+    },
+    {
+      "name": "yolo26l-obb-dotav1-onnx",
+      "display_name": "YOLO26l-obb",
+      "architecture": "YOLO26",
+      "size": "l",
+      "goal": "oriented-object-detection",
+      "description": "YOLO26l (large) oriented object detection model, 1024x1024 input, trained on DOTAv1, 15 aerial classes (plane, ship, storage tank, harbor, bridge, large/small vehicle, ...). Detect objects with rotated (oriented) bounding boxes, for objects seen from above at any angle such as in aerial, drone or satellite images (planes, ships, vehicles, storage tanks).",
+      "dataset": "DOTAv1",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 57.35,
+        "int8_loss": 1.05,
+        "int8": 56.3
+      },
+      "reference": {
+        "pcie_fps": 34.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.061983,
+        "full_load_fps": 33.3,
+        "weights_mb": 97.68,
+        "working_mb": 192.0,
+        "memory_mb": 289.68,
+        "parameters": 25605813,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26l-obb-202602-official.onnx",
+      "onnx_md5": "7c579b9e04e1bc694ca6efc819d3fa19"
+    },
+    {
+      "name": "yolo26x-obb-dotav1-onnx",
+      "display_name": "YOLO26x-obb",
+      "architecture": "YOLO26",
+      "size": "x",
+      "goal": "oriented-object-detection",
+      "description": "YOLO26x (extra large) oriented object detection model, 1024x1024 input, trained on DOTAv1, 15 aerial classes (plane, ship, storage tank, harbor, bridge, large/small vehicle, ...). Detect objects with rotated (oriented) bounding boxes, for objects seen from above at any angle such as in aerial, drone or satellite images (planes, ships, vehicles, storage tanks).",
+      "dataset": "DOTAv1",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 58.4,
+        "int8_loss": 5.34,
+        "int8": 53.06
+      },
+      "reference": {
+        "pcie_fps": 15.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.179641,
+        "full_load_fps": 14.2,
+        "weights_mb": 219.57,
+        "working_mb": 288.0,
+        "memory_mb": 507.57,
+        "parameters": 57559510,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26x-obb-202602-official.onnx",
+      "onnx_md5": "e8e80f50e37fb7947e761abff4627d17"
+    },
+    {
+      "name": "yolo11nseg-coco-onnx",
+      "display_name": "YOLO11n-seg",
+      "architecture": "YOLO11",
+      "size": "n",
+      "goal": "instance-segmentation",
+      "description": "YOLO11n (nano) instance segmentation model, 640x640 input, trained on COCO2017, 80 everyday object classes. Detect each object and outline it with a pixel mask, separating individual instances of the same class (each person, each car).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 31.84,
+        "int8_loss": 1.11,
+        "int8": 30.73
+      },
+      "reference": {
+        "pcie_fps": 598.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.008651,
+        "full_load_fps": 562.6,
+        "weights_mb": 10.94,
+        "working_mb": 24.22,
+        "memory_mb": 35.16,
+        "parameters": 2868708,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo11n-seg.onnx",
+      "onnx_md5": "572016169506bc288be930070a81d2db"
+    },
+    {
+      "name": "yolo11lseg-coco-onnx",
+      "display_name": "YOLO11l-seg",
+      "architecture": "YOLO11",
+      "size": "l",
+      "goal": "instance-segmentation",
+      "description": "YOLO11l (large) instance segmentation model, 640x640 input, trained on COCO2017, 80 everyday object classes. Detect each object and outline it with a pixel mask, separating individual instances of the same class (each person, each car).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 43.26,
+        "int8_loss": 0.13,
+        "int8": 43.13
+      },
+      "reference": {
+        "pcie_fps": 156.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.025751,
+        "full_load_fps": 151.3,
+        "weights_mb": 105.46,
+        "working_mb": 88.28,
+        "memory_mb": 193.74,
+        "parameters": 27646315,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo11l-seg.onnx",
+      "onnx_md5": "9eb9d3418c2f05329cdc4f969cfa6f21"
+    },
+    {
+      "name": "yolo26nseg-coco-onnx",
+      "display_name": "YOLO26n-seg",
+      "architecture": "YOLO26",
+      "size": "n",
+      "goal": "instance-segmentation",
+      "description": "YOLO26n (nano) instance segmentation model, 640x640 input, trained on COCO2017, 80 everyday object classes. Detect each object and outline it with a pixel mask, separating individual instances of the same class (each person, each car).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 32.95,
+        "int8_loss": 2.64,
+        "int8": 30.31
+      },
+      "reference": {
+        "pcie_fps": 516.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.009823,
+        "full_load_fps": 483.7,
+        "weights_mb": 10.39,
+        "working_mb": 22.47,
+        "memory_mb": 32.86,
+        "parameters": 2723031,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26n-seg-202602-official.onnx",
+      "onnx_md5": "f81e8ec0be839dd1f41e17a34b7fe93f"
+    },
+    {
+      "name": "yolo26sseg-coco-onnx",
+      "display_name": "YOLO26s-seg",
+      "architecture": "YOLO26",
+      "size": "s",
+      "goal": "instance-segmentation",
+      "description": "YOLO26s (small) instance segmentation model, 640x640 input, trained on COCO2017, 80 everyday object classes. Detect each object and outline it with a pixel mask, separating individual instances of the same class (each person, each car).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 39.28,
+        "int8_loss": 3.28,
+        "int8": 36.0
+      },
+      "reference": {
+        "pcie_fps": 385.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.012305,
+        "full_load_fps": 370.4,
+        "weights_mb": 39.66,
+        "working_mb": 41.22,
+        "memory_mb": 80.88,
+        "parameters": 10396352,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26s-seg-202602-official.onnx",
+      "onnx_md5": "3ca8a68a8bbe3206fa07677f813580eb"
+    },
+    {
+      "name": "yolo26mseg-coco-onnx",
+      "display_name": "YOLO26m-seg",
+      "architecture": "YOLO26",
+      "size": "m",
+      "goal": "instance-segmentation",
+      "description": "YOLO26m (medium) instance segmentation model, 640x640 input, trained on COCO2017, 80 everyday object classes. Detect each object and outline it with a pixel mask, separating individual instances of the same class (each person, each car).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 43.34,
+        "int8_loss": 1.4,
+        "int8": 41.94
+      },
+      "reference": {
+        "pcie_fps": 201.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.021505,
+        "full_load_fps": 196.3,
+        "weights_mb": 89.91,
+        "working_mb": 78.72,
+        "memory_mb": 168.63,
+        "parameters": 23569198,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26m-seg-202602-official.onnx",
+      "onnx_md5": "b0d7cadefa92ea848a08689a999c7afe"
+    },
+    {
+      "name": "yolo26lseg-coco-onnx",
+      "display_name": "YOLO26l-seg",
+      "architecture": "YOLO26",
+      "size": "l",
+      "goal": "instance-segmentation",
+      "description": "YOLO26l (large) instance segmentation model, 640x640 input, trained on COCO2017, 80 everyday object classes. Detect each object and outline it with a pixel mask, separating individual instances of the same class (each person, each car).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 45.09,
+        "int8_loss": 1.87,
+        "int8": 43.22
+      },
+      "reference": {
+        "pcie_fps": 141.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.027752,
+        "full_load_fps": 138.1,
+        "weights_mb": 106.68,
+        "working_mb": 78.72,
+        "memory_mb": 185.4,
+        "parameters": 27965486,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26l-seg-202602-official.onnx",
+      "onnx_md5": "9d3a69275b54a9b9ac530e3a5d6a1e60"
+    },
+    {
+      "name": "yolo26xseg-coco-onnx",
+      "display_name": "YOLO26x-seg",
+      "architecture": "YOLO26",
+      "size": "x",
+      "goal": "instance-segmentation",
+      "description": "YOLO26x (extra large) instance segmentation model, 640x640 input, trained on COCO2017, 80 everyday object classes. Detect each object and outline it with a pixel mask, separating individual instances of the same class (each person, each car).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 46.54,
+        "int8_loss": 2.0,
+        "int8": 44.54
+      },
+      "reference": {
+        "pcie_fps": 46.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.075758,
+        "full_load_fps": 44.2,
+        "weights_mb": 239.64,
+        "working_mb": 116.22,
+        "memory_mb": 355.86,
+        "parameters": 62819183,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26x-seg-202602-official.onnx",
+      "onnx_md5": "f81b3f895f17350f036035f1dccaa5b3"
+    },
+    {
+      "name": "yolo26nsem-cityscapes-onnx",
+      "display_name": "YOLO26n-sem",
+      "architecture": "YOLO26",
+      "size": "n",
+      "goal": "semantic-segmentation",
+      "description": "YOLO26n (nano) semantic segmentation model, 1024x1024 input, trained on Cityscapes, 19 urban street-scene classes. Label every pixel of a street or driving scene with its class (road, sidewalk, car, person, building, vegetation, sky), without separating individual objects.",
+      "dataset": "Cityscapes",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mIoU",
+        "fp32": 71.42,
+        "int8_loss": 1.18,
+        "int8": 70.24
+      },
+      "reference": {
+        "pcie_fps": 280.0,
+        "source": "Voyager SDK v1.9 model zoo (not listed in the v1.8 docs)"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.013129,
+        "full_load_fps": 276.5,
+        "weights_mb": 5.92,
+        "working_mb": 77.19,
+        "memory_mb": 83.11,
+        "parameters": 1552821,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26n-sem-202605-dynamic.onnx",
+      "onnx_md5": "09ca4748abde914ddfa98178821a62c6"
+    },
+    {
+      "name": "yolo26ssem-cityscapes-onnx",
+      "display_name": "YOLO26s-sem",
+      "architecture": "YOLO26",
+      "size": "s",
+      "goal": "semantic-segmentation",
+      "description": "YOLO26s (small) semantic segmentation model, 1024x1024 input, trained on Cityscapes, 19 urban street-scene classes. Label every pixel of a street or driving scene with its class (road, sidewalk, car, person, building, vegetation, sky), without separating individual objects.",
+      "dataset": "Cityscapes",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mIoU",
+        "fp32": 76.5,
+        "int8_loss": 0.36,
+        "int8": 76.14
+      },
+      "reference": {
+        "pcie_fps": 198.0,
+        "source": "Voyager SDK v1.9 model zoo (not listed in the v1.8 docs)"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.017868,
+        "full_load_fps": 196.6,
+        "weights_mb": 23.63,
+        "working_mb": 96.0,
+        "memory_mb": 119.63,
+        "parameters": 6195518,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26s-sem-202605-dynamic.onnx",
+      "onnx_md5": "ef407836f26612b47f9bec02d4729b91"
+    },
+    {
+      "name": "yolo26msem-cityscapes-onnx",
+      "display_name": "YOLO26m-sem",
+      "architecture": "YOLO26",
+      "size": "m",
+      "goal": "semantic-segmentation",
+      "description": "YOLO26m (medium) semantic segmentation model, 1024x1024 input, trained on Cityscapes, 19 urban street-scene classes. Label every pixel of a street or driving scene with its class (road, sidewalk, car, person, building, vegetation, sky), without separating individual objects.",
+      "dataset": "Cityscapes",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mIoU",
+        "fp32": 79.23,
+        "int8_loss": 0.34,
+        "int8": 78.89
+      },
+      "reference": {
+        "pcie_fps": 76.0,
+        "source": "Voyager SDK v1.9 model zoo (not listed in the v1.8 docs)"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.032503,
+        "full_load_fps": 78.3,
+        "weights_mb": 50.04,
+        "working_mb": 192.0,
+        "memory_mb": 242.04,
+        "parameters": 13118252,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26m-sem-202605-dynamic.onnx",
+      "onnx_md5": "39bdb1b90686a2d6a67acf05ef12da77"
+    },
+    {
+      "name": "yolo26lsem-cityscapes-onnx",
+      "display_name": "YOLO26l-sem",
+      "architecture": "YOLO26",
+      "size": "l",
+      "goal": "semantic-segmentation",
+      "description": "YOLO26l (large) semantic segmentation model, 1024x1024 input, trained on Cityscapes, 19 urban street-scene classes. Label every pixel of a street or driving scene with its class (road, sidewalk, car, person, building, vegetation, sky), without separating individual objects.",
+      "dataset": "Cityscapes",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mIoU",
+        "fp32": 79.73,
+        "int8_loss": 0.02,
+        "int8": 79.71
+      },
+      "reference": {
+        "pcie_fps": 52.0,
+        "source": "Voyager SDK v1.9 model zoo (not listed in the v1.8 docs)"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.046584,
+        "full_load_fps": 52.2,
+        "weights_mb": 63.56,
+        "working_mb": 192.0,
+        "memory_mb": 255.56,
+        "parameters": 16661548,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26l-sem-202605-dynamic.onnx",
+      "onnx_md5": "d1d42288fc4ea378a13c909d4d7c9acb"
+    },
+    {
+      "name": "yolo26xsem-cityscapes-onnx",
+      "display_name": "YOLO26x-sem",
+      "architecture": "YOLO26",
+      "size": "x",
+      "goal": "semantic-segmentation",
+      "description": "YOLO26x (extra large) semantic segmentation model, 1024x1024 input, trained on Cityscapes, 19 urban street-scene classes. Label every pixel of a street or driving scene with its class (road, sidewalk, car, person, building, vegetation, sky), without separating individual objects.",
+      "dataset": "Cityscapes",
+      "input_resolution": "1024x1024",
+      "accuracy": {
+        "metric": "mIoU",
+        "fp32": 80.76,
+        "int8_loss": 0.38,
+        "int8": 80.38
+      },
+      "reference": {
+        "pcie_fps": 19.0,
+        "source": "Voyager SDK v1.9 model zoo (not listed in the v1.8 docs)"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.138889,
+        "full_load_fps": 19.7,
+        "weights_mb": 142.92,
+        "working_mb": 288.0,
+        "memory_mb": 430.92,
+        "parameters": 37464620,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26x-sem-202605-dynamic.onnx",
+      "onnx_md5": "4dfc649dd00e5ab078b44027a7e45d3f"
+    },
+    {
+      "name": "yolo11npose-coco-onnx",
+      "display_name": "YOLO11n-pose",
+      "architecture": "YOLO11",
+      "size": "n",
+      "goal": "keypoint-detection",
+      "description": "YOLO11n (nano) keypoint detection model, 640x640 input, trained on COCO2017, person, 17 COCO keypoints. Estimate human body pose: detect each person and locate their body keypoints (nose, eyes, shoulders, elbows, wrists, hips, knees, ankles).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 51.15,
+        "int8_loss": 3.23,
+        "int8": 47.92
+      },
+      "reference": {
+        "pcie_fps": 759.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.007289,
+        "full_load_fps": 710.1,
+        "weights_mb": 10.94,
+        "working_mb": 18.75,
+        "memory_mb": 29.69,
+        "parameters": 2866516,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo11n-pose.onnx",
+      "onnx_md5": "ffa277388dc15a97330b396ca4565a8a"
+    },
+    {
+      "name": "yolo11lpose-coco-onnx",
+      "display_name": "YOLO11l-pose",
+      "architecture": "YOLO11",
+      "size": "l",
+      "goal": "keypoint-detection",
+      "description": "YOLO11l (large) keypoint detection model, 640x640 input, trained on COCO2017, person, 17 COCO keypoints. Estimate human body pose: detect each person and locate their body keypoints (nose, eyes, shoulders, elbows, wrists, hips, knees, ankles).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 67.44,
+        "int8_loss": 3.14,
+        "int8": 64.3
+      },
+      "reference": {
+        "pcie_fps": 179.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.021567,
+        "full_load_fps": 174.9,
+        "weights_mb": 99.71,
+        "working_mb": 75.0,
+        "memory_mb": 174.71,
+        "parameters": 26138330,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo11l-pose.onnx",
+      "onnx_md5": "a0c2124d8dfec01a427cc8b11bae0255"
+    },
+    {
+      "name": "yolo26npose-coco-onnx",
+      "display_name": "YOLO26n-pose",
+      "architecture": "YOLO26",
+      "size": "n",
+      "goal": "keypoint-detection",
+      "description": "YOLO26n (nano) keypoint detection model, 640x640 input, trained on COCO2017, person, 17 COCO keypoints. Estimate human body pose: detect each person and locate their body keypoints (nose, eyes, shoulders, elbows, wrists, hips, knees, ankles).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 57.66,
+        "int8_loss": 6.54,
+        "int8": 51.12
+      },
+      "reference": {
+        "pcie_fps": 658.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.007966,
+        "full_load_fps": 608.4,
+        "weights_mb": 11.16,
+        "working_mb": 18.75,
+        "memory_mb": 29.91,
+        "parameters": 2926548,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26n-pose-202602-official.onnx",
+      "onnx_md5": "373c6c15ec5f405c7f7c923e8d97aa36"
+    },
+    {
+      "name": "yolo26spose-coco-onnx",
+      "display_name": "YOLO26s-pose",
+      "architecture": "YOLO26",
+      "size": "s",
+      "goal": "keypoint-detection",
+      "description": "YOLO26s (small) keypoint detection model, 640x640 input, trained on COCO2017, person, 17 COCO keypoints. Estimate human body pose: detect each person and locate their body keypoints (nose, eyes, shoulders, elbows, wrists, hips, knees, ankles).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 63.61,
+        "int8_loss": 5.12,
+        "int8": 58.49
+      },
+      "reference": {
+        "pcie_fps": 467.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.010438,
+        "full_load_fps": 445.6,
+        "weights_mb": 39.52,
+        "working_mb": 37.5,
+        "memory_mb": 77.02,
+        "parameters": 10359805,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26s-pose-202602-official.onnx",
+      "onnx_md5": "c9dd0f3c32db9af6a3327818063bbc9b"
+    },
+    {
+      "name": "yolo26mpose-coco-onnx",
+      "display_name": "YOLO26m-pose",
+      "architecture": "YOLO26",
+      "size": "m",
+      "goal": "keypoint-detection",
+      "description": "YOLO26m (medium) keypoint detection model, 640x640 input, trained on COCO2017, person, 17 COCO keypoints. Estimate human body pose: detect each person and locate their body keypoints (nose, eyes, shoulders, elbows, wrists, hips, knees, ankles).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 69.54,
+        "int8_loss": 4.83,
+        "int8": 64.71
+      },
+      "reference": {
+        "pcie_fps": 235.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.017391,
+        "full_load_fps": 228.0,
+        "weights_mb": 82.16,
+        "working_mb": 75.0,
+        "memory_mb": 157.16,
+        "parameters": 21538219,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26m-pose-202602-official.onnx",
+      "onnx_md5": "504ad7de27024ac53a84a7ecbdf2bd47"
+    },
+    {
+      "name": "yolo26lpose-coco-onnx",
+      "display_name": "YOLO26l-pose",
+      "architecture": "YOLO26",
+      "size": "l",
+      "goal": "keypoint-detection",
+      "description": "YOLO26l (large) keypoint detection model, 640x640 input, trained on COCO2017, person, 17 COCO keypoints. Estimate human body pose: detect each person and locate their body keypoints (nose, eyes, shoulders, elbows, wrists, hips, knees, ankles).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 71.05,
+        "int8_loss": 3.02,
+        "int8": 68.03
+      },
+      "reference": {
+        "pcie_fps": 174.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.022506,
+        "full_load_fps": 170.6,
+        "weights_mb": 98.93,
+        "working_mb": 75.0,
+        "memory_mb": 173.93,
+        "parameters": 25934507,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26l-pose-202602-official.onnx",
+      "onnx_md5": "27d07fe7a8ed4c3905a3f0816d480156"
+    },
+    {
+      "name": "yolo26xpose-coco-onnx",
+      "display_name": "YOLO26x-pose",
+      "architecture": "YOLO26",
+      "size": "x",
+      "goal": "keypoint-detection",
+      "description": "YOLO26x (extra large) keypoint detection model, 640x640 input, trained on COCO2017, person, 17 COCO keypoints. Estimate human body pose: detect each person and locate their body keypoints (nose, eyes, shoulders, elbows, wrists, hips, knees, ankles).",
+      "dataset": "COCO2017",
+      "input_resolution": "640x640",
+      "accuracy": {
+        "metric": "mAP",
+        "fp32": 72.75,
+        "int8_loss": 16.62,
+        "int8": 56.13
+      },
+      "reference": {
+        "pcie_fps": 51.0,
+        "source": "Voyager SDK v1.8.0 model zoo"
+      },
+      "license": "AGPL-3.0",
+      "measured": {
+        "latency_s": 0.062893,
+        "full_load_fps": 49.7,
+        "weights_mb": 219.57,
+        "working_mb": 112.5,
+        "memory_mb": 332.07,
+        "parameters": 57557886,
+        "power_w": null
+      },
+      "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26x-pose-202602-official.onnx",
+      "onnx_md5": "25c3a464b3e17a296bd6b4427c442c20"
+    }
+  ],
+  "measurement": {
+    "board": "Axelera Edge 130p, AXE-BME20P1AE16A02 Rev 1.1, 1x Metis AIPU (4 cores, 800 MHz, INT8), PCIe Gen3 x4, 16 GB",
+    "host": "Dell Pro Slim Plus XE5, Intel Core Ultra 7 265, 32 GB RAM, Ubuntu 24.04",
+    "software": "Voyager SDK 1.7.0, Metis driver 1.5.5, card firmware 1.8.0 (runtime 1.7.0), board controller 7.4",
+    "latency": "one input processed alone: axrunmodel build/<model>/<model>/1/model.json --seconds 10 --aipu-cores 1 --no-double-buffer, latency = 1 / system FPS (includes the PC-to-card transfer), mean of the runs. Measured 2026-11-10, all 36 models. The chip time (dev FPS) was the same in every run; the spread between runs (up to 15 %) is on the PC side",
+    "full_load": "all 4 AIPU cores, one copy of the model each, with double buffering: axrunmodel build/<model>/<model>/1/model.json --seconds 10, 3 runs, mean system FPS. Measured 2026-11-03 to 2026-11-06, all 36 models. Used for frame-rate requirements, not as the latency",
+    "memory": "model_memory.onnx_memory_mb() of the model's ONNX file at its input resolution: weights plus the peak working memory of one input, floating-point values at 32 bits",
+    "power": "not measured: the Edge 130p Rev 1.1 has no power sensor (axmonitor cannot read it). Datasheet: typical 8-15 W running DNNs at maximum performance at 25 C, TDP 19 W. Planned: wall meter, P_run - P_idle",
+    "placeholders": {
+      "latency_s": "the full-load time per inference (1 / full_load_fps, else 1 / the reference FPS) times the mean ratio latency_s x full_load_fps of the models measured both ways",
+      "power_w": "the datasheet typical power of axelera_devices.yaml, midpoint"
+    }
+  }
+}

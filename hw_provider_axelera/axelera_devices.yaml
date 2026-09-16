@@ -1,0 +1,20 @@
+# Specs taken directly from Axelera AI's official datasheet (no physical
+# board was used to gather these numbers):
+#   - Axelera Edge 130p Datasheet, AX-000543-DS-8, Issue 8, 2026-08-03
+#
+# This is the confirmed unit: a single Metis AIPU chip (214 TOPS peak,
+# INT8 only) on a PCIe card, as used in the Dell-based system.
+
+Axelera Edge 130p:
+    chip: Metis AIPU
+    num_chips: 1
+    peak_tops_int8: 214
+    precision: int8
+    memory_options_gb: [16]   # see datasheet section 7 for exact part numbers
+    memory_type: LPDDR4X
+    host_interface: PCIe Gen3 x4
+    host_bw_GBs: 4
+    tdp_w: 19.0
+    typical_power_w_min: 8.0   # running DNNs at max performance, 25C ambient
+    typical_power_w_max: 15.0
+    form_factor: PCIe half-height/half-length, single-slot
