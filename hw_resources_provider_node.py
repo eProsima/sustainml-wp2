@@ -36,8 +36,46 @@ import json
 import torch
 import yaml
 
+import model_memory
+
 # Whether to go on spinning or interrupt
 running = False
+# Hugging Face token of the current task (set when the task provides one)
+hf_token = None
+MB = 1024 * 1024
+
+
+# Memory footprint (MB) of the chosen model, computed when it is evaluated, as (weights, working
+# memory). Weights: from the model loaded here if any, else from the weights stored in its ONNX
+# file, else from its Hugging Face config. Working memory: for Hugging Face models, to process the
+# longest input they accept (see model_memory.py). 0 where unknown.
+def model_memory_mb(model_name, model_path=None, loaded_model=None, hf_token=None):
+    if model_path and model_path.endswith(".onnx") and os.path.isfile(model_path) and loaded_model is None:
+        try:
+            from onnx import helper, load as onnx_load
+            total = 0
+            for tensor in onnx_load(model_path, load_external_data=False).graph.initializer:
+                count = 1
+                for dim in tensor.dims:
+                    count *= dim
+                total += count * helper.tensor_dtype_to_np_dtype(tensor.data_type).itemsize
+            return round(total / MB, 2), 0.0
+        except Exception as e:
+            print(f"[WARN] Could not compute the memory footprint of ONNX model {model_path}: {e}")
+            return 0.0, 0.0
+
+    if not model_name or model_name.upper() == "NO_MODEL":
+        return 0.0, 0.0
+
+    weights = 0.0
+    working = 0.0
+    try:
+        weights, working = model_memory.config_memory_mb(model_name, hf_token)
+    except Exception as e:
+        print(f"[WARN] Could not compute the memory footprint of model {model_name}: {e}")
+    if loaded_model is not None and hasattr(loaded_model, "get_memory_footprint"):
+        weights = round(loaded_model.get_memory_footprint() / MB, 2)
+    return weights, working
 
 
 # Load generic ml model and generate its input
@@ -188,6 +226,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
     latency = 0.0
     power_consumption = 0.0
+    loaded_model = None
 
     global hf_token
 
@@ -234,7 +273,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
         try:
             # Use RPTU
             results = rptu_integration.onnx_ml_resource_estimation(rptu_model, hw_selected) # TODO: hw_selected should affect predictor
-            print(f"RPTU latency results: {results['Latency']}")
+            print(f"RPTU latency results: {results['Latency']} s")
             print(f"RPTU power consumption results: {results['Run_power']}")
             latency = results['Latency'] / 3600.0  # RPTU returns seconds; WP3 expects hours
             power_consumption = results['Run_power']
@@ -338,6 +377,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                     pass
                 return
 
+            loaded_model = model
             print("Model, Tokenizer and Input loaded successfully")
             print(f"Model: {model}")
             print(f"Tokenizer: {tokenizer}")
@@ -388,7 +428,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             # Noinspection PyUnresolvedReferences
             upmem_layers.profiler_end()
 
-            latency = upmem_layers.profiler_get_latency()
+            latency = upmem_layers.profiler_get_latency() / 3600.0  # the simulator returns seconds; WP3 expects hours
             power_consumption = upmem_layers.profiler_get_power_consumption()
 
         except Exception as e:
@@ -408,8 +448,13 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     hw.hw_description(hw_selected)
     hw.power_consumption(power_consumption)
     hw.latency(latency)
+    weights_mb, working_mb = model_memory_mb(ml_model.model(), model_path, loaded_model, hf_token)
+    hw.memory_footprint_of_ml_model(round(weights_mb + working_mb, 2))
+    hw.max_hw_memory_footprint(float(hw_constraints.max_memory_footprint()))
+    print(f"Memory footprint: {hw.memory_footprint_of_ml_model()} MB = weights {weights_mb} MB + working memory "
+          f"{working_mb} MB for the longest input (limit {hw.max_hw_memory_footprint()} MB)")
     print(f"Power Consumption: {power_consumption:.8f} W")
-    print(f"Latency: {latency}")
+    print(f"Latency: {latency * 3600.0} s (sent as {latency} h)")
 
 
 # User Configuration Callback implementation

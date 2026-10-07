@@ -40,7 +40,7 @@ def task_callback(user_input, node_status, hw_constraints):
 
     # Default values
     hw_req = "PIM_AI_1chip"
-    mem_footprint = 100
+    mem_footprint = 0  # MB, 0 means no limit
 
     # Check if extra data has been sent and preserve ALL fields (hf_token, model_family, …)
     incoming = {}
