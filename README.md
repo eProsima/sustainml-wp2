@@ -49,3 +49,9 @@ WP2 module is not intended to operate independently and are integrated into the 
 For installation, configuration, and execution instructions, refer to the main framework repository:
 
 https://github.com/eProsima/SustainML-Framework
+
+## Third-party code
+
+The `upmem_llm_framework` directory contains a modified copy of the UPMEM LLM Framework, taken from eProsima's fork https://github.com/eProsima/upmem_llm_framework (commit `f4ed113`).
+It is distributed under the MIT License (`upmem_llm_framework/LICENSE`), Copyright (c) 2024 UPMEM.
+See `upmem_llm_framework/README.md` for the list of local modifications.

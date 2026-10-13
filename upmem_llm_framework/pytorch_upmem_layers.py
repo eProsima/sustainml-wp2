@@ -1,7 +1,7 @@
 #
 # Copyright (c) 2014-2024 - UPMEM
-# UPMEM S.A.S France property - UPMEM confidential information covered by NDA
-# For UPMEM partner internal use only - no modification allowed without permission of UPMEM
+# Licensed under the MIT License. See the LICENSE file in this directory.
+# Modified by eProsima for SustainML (see README.md in this directory).
 #
 # This file wraps PyTorch classes and functions into new UPM classes and functions able to
 # track the start, inputs, end and outputs of the corresponding function.
