@@ -1,7 +1,7 @@
 #
 # Copyright (c) 2014-2024 - UPMEM
-# UPMEM S.A.S France property - UPMEM confidential information covered by NDA
-# For UPMEM partner internal use only - no modification allowed without permission of UPMEM
+# Licensed under the MIT License. See the LICENSE file in this directory.
+# Modified by eProsima for SustainML (see README.md in this directory).
 #
 # This file implements all profiling related classes and functions
 
@@ -383,7 +383,7 @@ class UPM_Profiler:
         gen_time_s = inference_time_sec - sum_time_s + 1e20 # to avoid division by zero
         gen_n_executions = self.n_executions - 1
 
-        print("##### UPMEM PROFILER OUTPUT #####")
+        print("##### HW PROFILER OUTPUT #####")
         print(
             f"Total time (SUM + GEN): {inference_time_sec} s, "
             f"with data type: {self.sim_data_type}, "
@@ -473,7 +473,7 @@ class UPM_Profiler:
             self.print_log_summary(show_summarization=True)
             self.print_log_summary(show_all=True)
 
-        print("##### END UPMEM PROFILER OUTPUT #####")
+        print("##### END HW PROFILER OUTPUT #####")
 
     def add(self, layer, context):
         layer_type = type(layer)

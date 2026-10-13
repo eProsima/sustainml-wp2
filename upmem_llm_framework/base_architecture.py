@@ -1,7 +1,6 @@
 #
 # Copyright (c) 2014-2024 - UPMEM
-# UPMEM S.A.S France property - UPMEM confidential information covered by NDA
-# For UPMEM partner internal use only - no modification allowed without permission of UPMEM
+# Licensed under the MIT License. See the LICENSE file in this directory.
 #
 # This file implements Base_architecture class
 # This class contains a default implementation of the following functions:

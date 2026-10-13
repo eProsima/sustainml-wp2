@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2014-2024 - UPMEM
+# Licensed under the MIT License. See the LICENSE file in this directory.
 #
 
 
