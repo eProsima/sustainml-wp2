@@ -80,23 +80,28 @@ def predict_latency_energy(onnx_model_path: str,
                         prediction_model_file=eboard_path,
                         denormalizer=denorm_energy_board)
 
-    lat_h = float(np.array(lat_pred).reshape(-1)[0])               # hours
-    energy_dynamic_Wh = float(np.array(edyn_pred).reshape(-1)[0])  # Wh
-    energy_board_Wh   = float(np.array(eboard_pred).reshape(-1)[0])# Wh
+    # The predictors return the units of the DFKI measurements they were trained on
+    # (measurements.jsonl): latency of a single input in seconds and energy in joules
+    # (energy_board_runtime = power_board_runtime [W] * latency [s])
+    lat_s = float(np.array(lat_pred).reshape(-1)[0])
+    energy_dynamic_J = float(np.array(edyn_pred).reshape(-1)[0])
+    energy_board_J = float(np.array(eboard_pred).reshape(-1)[0])
 
-    # Derive average board power [W] from energy [Wh] and latency [h]
-    if lat_h > 0.0:
-        power_w = energy_board_Wh / lat_h
+    # Average board power [W] from energy [J] and latency [s]
+    if lat_s > 0.0:
+        power_w = energy_board_J / lat_s
     else:
         power_w = 0.0
 
     return {
         "device": device,
-        "latency_h": lat_h,
+        "latency_s": lat_s,
+        "latency_h": lat_s / 3600.0,  # WP3 expects hours
         "power_w": power_w,
-        "energy_Wh": energy_board_Wh,
-        "energy_dynamic_Wh": energy_dynamic_Wh,
-        "energy_board_runtime_Wh": energy_board_Wh,
+        "energy_J": energy_board_J,
+        "energy_Wh": energy_board_J / 3600.0,
+        "energy_dynamic_Wh": energy_dynamic_J / 3600.0,
+        "energy_board_runtime_Wh": energy_board_J / 3600.0,
         "provenance": {
             "stats_file": os.path.relpath(stats_file, HERE),
             "measurements_stats_file": os.path.relpath(meas_stats_file, HERE),
