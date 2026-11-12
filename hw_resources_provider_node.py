@@ -26,6 +26,8 @@ if HERE not in sys.path:
 import hw_provider_fpga
 from hw_provider_fpga import predict_latency_energy
 
+import hw_provider_axelera
+
 # Managing UPMEMEM LLM
 import upmem_llm_framework as upmem_layers
 import transformers
@@ -42,24 +44,15 @@ import model_memory
 running = False
 # Hugging Face token of the current task (set when the task provides one)
 hf_token = None
-MB = 1024 * 1024
 
 
 # Memory footprint (MB) of the chosen model, computed when it is evaluated, as (weights, working
-# memory). Weights: from the model loaded here if any, else from the weights stored in its ONNX
-# file, else from its Hugging Face config. Working memory: for Hugging Face models, to process the
-# longest input they accept (see model_memory.py). 0 where unknown.
+# memory), the same way for every hardware (see model_memory.py): from its ONNX file if it has one,
+# else from its Hugging Face config, the weights from the model loaded here if any. 0 where unknown.
 def model_memory_mb(model_name, model_path=None, loaded_model=None, hf_token=None):
     if model_path and model_path.endswith(".onnx") and os.path.isfile(model_path) and loaded_model is None:
         try:
-            from onnx import helper, load as onnx_load
-            total = 0
-            for tensor in onnx_load(model_path, load_external_data=False).graph.initializer:
-                count = 1
-                for dim in tensor.dims:
-                    count *= dim
-                total += count * helper.tensor_dtype_to_np_dtype(tensor.data_type).itemsize
-            return round(total / MB, 2), 0.0
+            return model_memory.onnx_memory_mb(model_path)
         except Exception as e:
             print(f"[WARN] Could not compute the memory footprint of ONNX model {model_path}: {e}")
             return 0.0, 0.0
@@ -73,8 +66,8 @@ def model_memory_mb(model_name, model_path=None, loaded_model=None, hf_token=Non
         weights, working = model_memory.config_memory_mb(model_name, hf_token)
     except Exception as e:
         print(f"[WARN] Could not compute the memory footprint of model {model_name}: {e}")
-    if loaded_model is not None and hasattr(loaded_model, "get_memory_footprint"):
-        weights = round(loaded_model.get_memory_footprint() / MB, 2)
+    if loaded_model is not None and hasattr(loaded_model, "parameters"):
+        weights = model_memory.weights_mb(loaded_model)
     return weights, working
 
 
@@ -325,6 +318,35 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             latency = 0.0
             power_consumption = 0.0
 
+    # CNNs on the Axelera board: the YOLO models of the Voyager SDK zoo, with the latency, power
+    # and memory measured on the board (hw_provider_axelera/yolo_models.json). Nothing to load
+    # or run here, so the memory comes from the measurements too and the node returns early
+    elif is_cnn and hw_provider_axelera.is_axelera(hw_selected):
+        hw.hw_description(hw_selected)
+        hw.max_hw_memory_footprint(float(hw_constraints.max_memory_footprint()))
+        yolo = hw_provider_axelera.get_model(ml_model.model())
+        if yolo is None:
+            print(f"[ERROR][Axelera] '{ml_model.model()}' is not a YOLO model of the Axelera board")
+            hw.power_consumption(0.0)
+            hw.latency(0.0)
+            error_info = {"error_code": "NO_MODEL" if ml_model.model() == "NO_MODEL" else "UNKNOWN_MODEL",
+                          "error": f"No Axelera YOLO model '{ml_model.model()}'. HW resources not computed."}
+            hw.extra_data(json.dumps(error_info).encode("utf-8"))
+            return
+
+        res = hw_provider_axelera.resources(yolo)
+        hw.latency(res["latency_s"] / 3600.0)  # WP3 expects hours
+        hw.power_consumption(res["power_w"])
+        if res["memory_mb"] is not None:
+            # Computed by model_memory.onnx_memory_mb() from the model's ONNX file, as for any ONNX model
+            hw.memory_footprint_of_ml_model(res["memory_mb"])
+        hw.extra_data(json.dumps({"axelera": res, "accuracy": yolo["accuracy"]}).encode("utf-8"))
+        print(f"[Axelera] {yolo['name']}: {res['latency_s'] * 1000.0:.3f} ms per inference, "
+              f"{res['power_w']:.2f} W, {res['energy_per_inference_j']:.5f} J, "
+              f"memory {res['memory_mb']} MB = weights {res['weights_mb']} MB + working memory "
+              f"{res['working_mb']} MB ({res['source']})")
+        return
+
     # Use UPMEM hw simulator
     else:
         try:
@@ -474,8 +496,10 @@ def configuration_callback(req, res):
             with open(os.path.dirname(__file__)+'/rptu_framework/rptu_devices.yaml', 'r') as file:
                 rptu_devices = yaml.safe_load(file)
 
+            axelera_devices = hw_provider_axelera.get_devices()
+
             # Extract the hardware names
-            hardware_names = list(upmem_devices.keys()) + list(rptu_devices.keys())
+            hardware_names = list(upmem_devices.keys()) + list(rptu_devices.keys()) + list(axelera_devices.keys())
             hardware_names.append("FPGA (xczu19eg-ffvb1517-2-i)")  # Expose the DFKI FPGA predictor device
 
             if not hardware_names:
@@ -486,7 +510,10 @@ def configuration_callback(req, res):
                 res.err_code(0)  # 0: No error || 1: Error
             sorted_architectures = sorted(list(upmem_devices.keys()))
             sorted_rptu_devices = sorted(list(rptu_devices.keys()))
-            sorted_hardware_names = ', '.join(sorted_architectures + sorted_rptu_devices + ["FPGA (xczu19eg-ffvb1517-2-i)"])
+            sorted_axelera_devices = sorted(list(axelera_devices.keys()))
+            sorted_hardware_names = ', '.join(
+                sorted_architectures + sorted_rptu_devices + sorted_axelera_devices + ["FPGA (xczu19eg-ffvb1517-2-i)"]
+            )
             res.configuration(json.dumps(dict(hardwares=sorted_hardware_names)))
 
         except Exception as e:

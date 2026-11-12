@@ -11,10 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Memory footprint of a Hugging Face model, computed from its config without its weights.
+"""Memory footprint of a model, the same way for every hardware: weights plus working memory.
 
-It runs in a fresh process (config_memory_mb): the UPMEM simulator used by the HW node replaces
-PyTorch's layers for the whole process, and the memory must be that of PyTorch's own layers.
+  weights:        the model's parameters and buffers
+  working memory: the tensors processing one input creates that are alive at the same time, at
+                  their peak, for the largest input the model accepts (a model of fixed input size,
+                  as a CNN, has only that one)
+
+Every floating-point value is counted at 32 bits (FLOAT_BYTES), whatever precision the model is
+stored in, loaded in or runs at on the hardware, so that models compare; other values (integer
+indices...) at their own size. In MB of 1024 x 1024 bytes.
+
+A Hugging Face model's is computed from its config without its weights (config_memory_mb), in a
+fresh process: the UPMEM simulator used by the HW node replaces PyTorch's layers for the whole
+process, and the memory must be that of PyTorch's own layers. An ONNX model's from its file
+(onnx_memory_mb).
 """
 
 import multiprocessing
@@ -26,6 +37,7 @@ from torch.utils._python_dispatch import TorchDispatchMode
 from torch.utils._pytree import tree_flatten
 
 MB = 1024 * 1024
+FLOAT_BYTES = 4
 
 
 # Bytes of the tensors a forward pass creates that are alive at the same time: their peak
@@ -69,29 +81,34 @@ class _MetaAutocast(torch.autocast):
         super().__init__("cpu" if device_type == "meta" else device_type, *args, **kwargs)
 
 
-# The model built from its config without weights (on the meta device), as the HW node loads it:
-# float16
+# The model built from its config without weights (on the meta device), in float32 so that its
+# working memory counts floating-point values at FLOAT_BYTES
 def _model_without_weights(model_name, hf_token):
     from accelerate import init_empty_weights
     from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoModelForSeq2SeqLM
     config = AutoConfig.from_pretrained(model_name, trust_remote_code=True, token=hf_token)
     with init_empty_weights(include_buffers=True):
         if getattr(config, "is_encoder_decoder", False):
-            model = AutoModelForSeq2SeqLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
+            model = AutoModelForSeq2SeqLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float32)
         else:
             try:
-                model = AutoModelForCausalLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
+                model = AutoModelForCausalLM.from_config(config, trust_remote_code=True, torch_dtype=torch.float32)
             except Exception:
-                model = AutoModel.from_config(config, trust_remote_code=True, torch_dtype=torch.float16)
-    model = model.to(torch.float16).eval()
+                model = AutoModel.from_config(config, trust_remote_code=True, torch_dtype=torch.float32)
+    model = model.to(torch.float32).eval()
     model.tie_weights()
     return model, config
 
 
-# Weights (MB): float16 parameters (tied weights counted once) plus buffers
-def _weights_mb(model):
-    params = sum(p.numel() for p in model.parameters()) * 2
-    buffers = sum(b.numel() * b.element_size() for b in model.buffers())
+def _tensor_bytes(tensor):
+    return tensor.numel() * (FLOAT_BYTES if tensor.is_floating_point() else tensor.element_size())
+
+
+# Weights (MB) of a PyTorch model, loaded or built without weights: parameters (tied weights
+# counted once) plus buffers
+def weights_mb(model):
+    params = sum(_tensor_bytes(p) for p in model.parameters())
+    buffers = sum(_tensor_bytes(b) for b in model.buffers())
     return round((params + buffers) / MB, 2)
 
 
@@ -127,7 +144,7 @@ def _working_memory_mb(model, config):
 def _compute(model_name, hf_token, results):
     try:
         model, config = _model_without_weights(model_name, hf_token)
-        results.put((_weights_mb(model), _working_memory_mb(model, config)))
+        results.put((weights_mb(model), _working_memory_mb(model, config)))
     except Exception as e:
         results.put(RuntimeError(f"{type(e).__name__}: {e}"))
 
@@ -149,3 +166,90 @@ def config_memory_mb(model_name, hf_token=None, timeout=300):
     if isinstance(result, Exception):
         raise result
     return result
+
+
+def _onnx_value_bytes(data_type, dims):
+    from onnx import TensorProto, helper
+    count = 1
+    for dim in dims:
+        count *= dim
+    if data_type in (TensorProto.FLOAT, TensorProto.FLOAT16, TensorProto.BFLOAT16, TensorProto.DOUBLE):
+        return count * FLOAT_BYTES
+    return count * helper.tensor_dtype_to_np_dtype(data_type).itemsize
+
+
+# (weights, working memory) in MB of an ONNX model. The working memory is that of one input: a
+# model accepting any image size (dynamic height and width) is given the one it runs at in
+# input_hw, (height, width). The size of every intermediate result comes from ONNX shape
+# inference or, for those it cannot tell, from running the model once on that input; each one is
+# alive from the node that produces it to the last node that uses it
+def onnx_memory_mb(model_path, input_hw=None):
+    import numpy as np
+    import onnx
+    from onnx import helper, shape_inference
+
+    model = onnx.load(model_path, load_external_data=False)
+    initializers = {t.name for t in model.graph.initializer}
+    weights = sum(_onnx_value_bytes(t.data_type, t.dims) for t in model.graph.initializer)
+
+    # One input, at the given size where the model accepts any
+    inputs = [v for v in model.graph.input if v.name not in initializers]
+    for value in inputs:
+        dims = value.type.tensor_type.shape.dim
+        for i, dim in enumerate(dims):
+            if dim.dim_value > 0:
+                continue
+            if i == 0:
+                dim.dim_value = 1
+            elif input_hw and len(dims) == 4 and i >= 2:
+                dim.dim_value = int(input_hw[i - 2])
+            else:
+                print(f"[WARN] {model_path}: unknown size of input {value.name}: working memory not computed")
+                return round(weights / MB, 2), 0.0
+
+    model = shape_inference.infer_shapes(model, data_prop=True)
+    sizes = {}
+    for value in list(model.graph.input) + list(model.graph.value_info) + list(model.graph.output):
+        tensor = value.type.tensor_type
+        if tensor.HasField("shape") and all(d.dim_value > 0 for d in tensor.shape.dim):
+            sizes[value.name] = _onnx_value_bytes(tensor.elem_type, [d.dim_value for d in tensor.shape.dim])
+
+    unknown = [n for node in model.graph.node for n in node.output if n and n not in sizes]
+    if unknown:
+        import onnxruntime
+        probe = onnx.ModelProto()
+        probe.CopyFrom(model)
+        known_outputs = {o.name for o in probe.graph.output}
+        probe.graph.output.extend(helper.make_empty_tensor_value_info(n) for n in unknown if n not in known_outputs)
+        session = onnxruntime.InferenceSession(probe.SerializeToString(), providers=["CPUExecutionProvider"])
+        feed = {}
+        for value in inputs:
+            tensor = value.type.tensor_type
+            feed[value.name] = np.zeros([d.dim_value for d in tensor.shape.dim],
+                                        dtype=helper.tensor_dtype_to_np_dtype(tensor.elem_type))
+        names = [o.name for o in session.get_outputs()]
+        for name, array in zip(names, session.run(names, feed)):
+            if name not in sizes:
+                sizes[name] = _onnx_value_bytes(helper.np_dtype_to_tensor_dtype(array.dtype), array.shape)
+
+    nodes = model.graph.node
+    first = {v.name: 0 for v in inputs}
+    last = {}
+    for i, node in enumerate(nodes):
+        for name in node.input:
+            if name and name not in initializers:
+                last[name] = i
+        for name in node.output:
+            if name:
+                first.setdefault(name, i)
+    for value in model.graph.output:
+        last[value.name] = len(nodes)
+    alive = [0] * (len(nodes) + 2)
+    for name, start in first.items():
+        alive[start] += sizes.get(name, 0)
+        alive[max(last.get(name, start), start) + 1] -= sizes.get(name, 0)
+    current = peak = 0
+    for change in alive:
+        current += change
+        peak = max(peak, current)
+    return round(weights / MB, 2), round(peak / MB, 2)
