@@ -126,6 +126,31 @@ def resources(model: dict) -> dict:
     }
 
 
+def catalog_view() -> list:
+    """Every model with what the YOLO models screen of the UI shows: its task, architecture and
+    size, its accuracy (published by Axelera) and the resources it uses on the board (resources()).
+    """
+    view = []
+    for m in list_models():
+        r = resources(m)
+        view.append({
+            "name": m["name"],
+            "display_name": m["display_name"],
+            "architecture": m["architecture"],
+            "size": m["size"],
+            "goal": m["goal"],
+            "metric": m["accuracy"]["metric"],
+            "accuracy_fp32": m["accuracy"]["fp32"],
+            "accuracy_int8": m["accuracy"]["int8"],
+            "latency_s": r["latency_s"],
+            "power_w": r["power_w"],
+            "energy_per_inference_j": r["energy_per_inference_j"],
+            "memory_mb": r["memory_mb"],
+            "power_source": r["source"]["power"],
+        })
+    return view
+
+
 PRIORITIES = ("accuracy", "speed", "energy", "balanced")
 DEFAULT_PREFERENCES = {"priority": "balanced", "min_fps": None, "max_latency_ms": None}
 
