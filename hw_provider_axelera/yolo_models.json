@@ -4,9 +4,10 @@
     "reference: accuracy (COCO mAP etc., fp32 and the int8 loss) and FPS published by Axelera for the PCIe card.",
     "measured: on our Axelera Edge 130p and from the model's ONNX file (onnx_url), see \"measurement\":",
     "  latency_s      time of one inference, one input processed alone, as for every hardware in SustainML",
+    "  chip_fps       in the same runs, inferences per second of the chip alone (dev FPS): 1 / chip_fps is the chip's time per inference",
     "  full_load_fps  inferences per second with all AIPU cores busy (the board's throughput)",
     "  memory_mb      weights_mb + working_mb, computed as for every model in SustainML (model_memory.py)",
-    "  power_w        null: this board revision has no power sensor",
+    "  power_w        null: this board revision has no power sensor, so yolo_catalog.resources() estimates it",
     "null values are placeholders that yolo_catalog.resources() fills, saying so in its \"source\".",
     "import_measurements.py puts new measurements in this file."
   ],
@@ -67,6 +68,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.006656,
+        "chip_fps": 223.3,
         "full_load_fps": 725.9,
         "weights_mb": 9.98,
         "working_mb": 18.75,
@@ -99,6 +101,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.008703,
+        "chip_fps": 158.1,
         "full_load_fps": 533.4,
         "weights_mb": 36.03,
         "working_mb": 37.5,
@@ -131,6 +134,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.016447,
+        "chip_fps": 75.5,
         "full_load_fps": 261.3,
         "weights_mb": 76.64,
         "working_mb": 75.0,
@@ -163,6 +167,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.020906,
+        "chip_fps": 55.1,
         "full_load_fps": 177.8,
         "weights_mb": 96.67,
         "working_mb": 75.0,
@@ -195,6 +200,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.054645,
+        "chip_fps": 23.5,
         "full_load_fps": 53.5,
         "weights_mb": 217.13,
         "working_mb": 112.5,
@@ -227,6 +233,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.008217,
+        "chip_fps": 193.4,
         "full_load_fps": 630.0,
         "weights_mb": 9.35,
         "working_mb": 18.75,
@@ -259,6 +266,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.009839,
+        "chip_fps": 137.8,
         "full_load_fps": 481.6,
         "weights_mb": 36.39,
         "working_mb": 37.5,
@@ -291,6 +299,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.016873,
+        "chip_fps": 71.7,
         "full_load_fps": 251.4,
         "weights_mb": 78.02,
         "working_mb": 75.0,
@@ -323,6 +332,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.022173,
+        "chip_fps": 51.8,
         "full_load_fps": 173.7,
         "weights_mb": 94.79,
         "working_mb": 75.0,
@@ -355,6 +365,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.061856,
+        "chip_fps": 20.0,
         "full_load_fps": 52.4,
         "weights_mb": 212.74,
         "working_mb": 112.5,
@@ -387,6 +398,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.014888,
+        "chip_fps": 88.8,
         "full_load_fps": 245.1,
         "weights_mb": 10.38,
         "working_mb": 48.0,
@@ -419,6 +431,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.05988,
+        "chip_fps": 18.3,
         "full_load_fps": 35.5,
         "weights_mb": 99.71,
         "working_mb": 192.0,
@@ -451,6 +464,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.017281,
+        "chip_fps": 75.8,
         "full_load_fps": 202.2,
         "weights_mb": 9.34,
         "working_mb": 48.0,
@@ -483,6 +497,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.023328,
+        "chip_fps": 51.5,
         "full_load_fps": 162.2,
         "weights_mb": 37.22,
         "working_mb": 96.0,
@@ -515,6 +530,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.044118,
+        "chip_fps": 25.2,
         "full_load_fps": 57.1,
         "weights_mb": 80.91,
         "working_mb": 192.0,
@@ -547,6 +563,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.061983,
+        "chip_fps": 17.6,
         "full_load_fps": 33.3,
         "weights_mb": 97.68,
         "working_mb": 192.0,
@@ -579,6 +596,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.179641,
+        "chip_fps": 6.6,
         "full_load_fps": 14.2,
         "weights_mb": 219.57,
         "working_mb": 288.0,
@@ -611,6 +629,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.008651,
+        "chip_fps": 191.0,
         "full_load_fps": 562.6,
         "weights_mb": 10.94,
         "working_mb": 24.22,
@@ -643,6 +662,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.025751,
+        "chip_fps": 45.5,
         "full_load_fps": 151.3,
         "weights_mb": 105.46,
         "working_mb": 88.28,
@@ -675,6 +695,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.009823,
+        "chip_fps": 164.6,
         "full_load_fps": 483.7,
         "weights_mb": 10.39,
         "working_mb": 22.47,
@@ -707,6 +728,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.012305,
+        "chip_fps": 109.53,
         "full_load_fps": 370.4,
         "weights_mb": 39.66,
         "working_mb": 41.22,
@@ -739,6 +761,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.021505,
+        "chip_fps": 55.5,
         "full_load_fps": 196.3,
         "weights_mb": 89.91,
         "working_mb": 78.72,
@@ -771,6 +794,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.027752,
+        "chip_fps": 41.6,
         "full_load_fps": 138.1,
         "weights_mb": 106.68,
         "working_mb": 78.72,
@@ -803,6 +827,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.075758,
+        "chip_fps": 15.9,
         "full_load_fps": 44.2,
         "weights_mb": 239.64,
         "working_mb": 116.22,
@@ -835,6 +860,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.013129,
+        "chip_fps": 98.9,
         "full_load_fps": 276.5,
         "weights_mb": 5.92,
         "working_mb": 77.19,
@@ -867,6 +893,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.017868,
+        "chip_fps": 68.5,
         "full_load_fps": 196.6,
         "weights_mb": 23.63,
         "working_mb": 96.0,
@@ -899,6 +926,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.032503,
+        "chip_fps": 34.6,
         "full_load_fps": 78.3,
         "weights_mb": 50.04,
         "working_mb": 192.0,
@@ -931,6 +959,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.046584,
+        "chip_fps": 23.4,
         "full_load_fps": 52.2,
         "weights_mb": 63.56,
         "working_mb": 192.0,
@@ -963,6 +992,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.138889,
+        "chip_fps": 8.7,
         "full_load_fps": 19.7,
         "weights_mb": 142.92,
         "working_mb": 288.0,
@@ -995,6 +1025,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.007289,
+        "chip_fps": 216.9,
         "full_load_fps": 710.1,
         "weights_mb": 10.94,
         "working_mb": 18.75,
@@ -1027,6 +1058,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.021567,
+        "chip_fps": 52.6,
         "full_load_fps": 174.9,
         "weights_mb": 99.71,
         "working_mb": 75.0,
@@ -1059,6 +1091,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.007966,
+        "chip_fps": 185.5,
         "full_load_fps": 608.4,
         "weights_mb": 11.16,
         "working_mb": 18.75,
@@ -1091,6 +1124,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.010438,
+        "chip_fps": 129.1,
         "full_load_fps": 445.6,
         "weights_mb": 39.52,
         "working_mb": 37.5,
@@ -1123,6 +1157,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.017391,
+        "chip_fps": 66.6,
         "full_load_fps": 228.0,
         "weights_mb": 82.16,
         "working_mb": 75.0,
@@ -1155,6 +1190,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.022506,
+        "chip_fps": 50.6,
         "full_load_fps": 170.6,
         "weights_mb": 98.93,
         "working_mb": 75.0,
@@ -1187,6 +1223,7 @@
       "license": "AGPL-3.0",
       "measured": {
         "latency_s": 0.062893,
+        "chip_fps": 19.43,
         "full_load_fps": 49.7,
         "weights_mb": 219.57,
         "working_mb": 112.5,
@@ -1205,10 +1242,10 @@
     "latency": "one input processed alone: axrunmodel build/<model>/<model>/1/model.json --seconds 10 --aipu-cores 1 --no-double-buffer, latency = 1 / system FPS (includes the PC-to-card transfer), mean of the runs. Measured 2026-11-10, all 36 models. The chip time (dev FPS) was the same in every run; the spread between runs (up to 15 %) is on the PC side",
     "full_load": "all 4 AIPU cores, one copy of the model each, with double buffering: axrunmodel build/<model>/<model>/1/model.json --seconds 10, 3 runs, mean system FPS. Measured 2026-11-03 to 2026-11-06, all 36 models. Used for frame-rate requirements, not as the latency",
     "memory": "model_memory.onnx_memory_mb() of the model's ONNX file at its input resolution: weights plus the peak working memory of one input, floating-point values at 32 bits",
-    "power": "not measured: the Edge 130p Rev 1.1 has no power sensor (axmonitor cannot read it). Datasheet: typical 8-15 W running DNNs at maximum performance at 25 C, TDP 19 W. Planned: wall meter, P_run - P_idle",
+    "power": "not measured: the Edge 130p Rev 1.1 has no power sensor (axmonitor cannot read it; Axelera recommends a wall meter, P_run - P_idle). Datasheet: typical 8-15 W running DNNs at maximum performance at 25 C, TDP 19 W",
     "placeholders": {
       "latency_s": "the full-load time per inference (1 / full_load_fps, else 1 / the reference FPS) times the mean ratio latency_s x full_load_fps of the models measured both ways",
-      "power_w": "the datasheet typical power of axelera_devices.yaml, midpoint"
+      "power_w": "estimate: the datasheet typical power of axelera_devices.yaml (midpoint, 11.5 W) x the share of the latency the chip computes, (1 / chip_fps) / latency_s, as CarbonTracker does for devices it cannot read (watts x utilization). Without chip_fps, the datasheet midpoint alone"
     }
   }
 }

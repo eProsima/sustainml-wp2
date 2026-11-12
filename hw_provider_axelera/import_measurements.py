@@ -13,7 +13,8 @@
 # limitations under the License.
 """Puts the values measured on the Axelera board, and the memory of the models, in yolo_models.json.
 
-  --latency CSV    one input alone (measure_single_yolo.sh): measured.latency_s = 1 / mean system FPS
+  --latency CSV    one input alone (measure_single_yolo.sh): measured.latency_s = 1 / mean system FPS,
+                   and measured.chip_fps = mean chip (dev) FPS, from which the power is estimated
   --full-load CSV  all cores (measure_all_yolo.sh): measured.full_load_fps = mean system FPS
   --memory         measured weights_mb, working_mb, memory_mb and parameters, computed from each
                    model's ONNX file as for any ONNX model (model_memory.onnx_memory_mb). The file is
@@ -41,15 +42,18 @@ sys.path.insert(0, os.path.dirname(HERE))
 import model_memory  # noqa: E402
 
 CATALOG_FILE = os.path.join(HERE, "yolo_models.json")
+MEASURED_ORDER = ("latency_s", "chip_fps", "full_load_fps", "weights_mb", "working_mb", "memory_mb",
+                  "parameters", "power_w")
 
 
-def mean_system_fps(csv_path):
+# Mean per model of a CSV column over its runs
+def mean_column(csv_path, column):
     runs = {}
     with open(csv_path, newline="") as f:
         for row in csv.DictReader(f):
-            if row.get("system_fps"):
-                runs.setdefault(row["model"], []).append(float(row["system_fps"]))
-    return {model: sum(fps) / len(fps) for model, fps in runs.items()}
+            if row.get(column):
+                runs.setdefault(row["model"], []).append(float(row[column]))
+    return {model: sum(values) / len(values) for model, values in runs.items()}
 
 
 def onnx_file(model, onnx_dir, tmp):
@@ -90,15 +94,21 @@ def main():
         catalog = json.load(f)
     models = [m for m in catalog["models"] if not args.models or m["name"] in args.models]
 
-    for key, path in (("latency_s", args.latency), ("full_load_fps", args.full_load)):
-        if not path:
-            continue
-        for name, fps in mean_system_fps(path).items():
+    imports = []
+    if args.latency:
+        imports += [("latency_s", args.latency, "system_fps"), ("chip_fps", args.latency, "dev_fps")]
+    if args.full_load:
+        imports.append(("full_load_fps", args.full_load, "system_fps"))
+    for key, path, column in imports:
+        for name, fps in mean_column(path, column).items():
             model = next((m for m in models if m["name"] == name), None)
             if model is None:
                 print(f"{name}: not in the catalog, skipped")
                 continue
-            model["measured"][key] = round(1.0 / fps, 6) if key == "latency_s" else round(fps, 1)
+            if key == "latency_s":
+                model["measured"][key] = round(1.0 / fps, 6)
+            else:
+                model["measured"][key] = round(fps, 2 if key == "chip_fps" else 1)
             print(f"{name}: {key} = {model['measured'][key]}")
 
     if args.memory:
@@ -113,6 +123,11 @@ def main():
                 print(f"{model['name']}: {weights} MB weights + {working} MB working memory")
                 if path.startswith(tmp):
                     os.remove(path)
+
+    for model in catalog["models"]:
+        measured = model["measured"]
+        model["measured"] = {k: measured[k] for k in sorted(measured, key=lambda k: (
+            MEASURED_ORDER.index(k) if k in MEASURED_ORDER else len(MEASURED_ORDER)))}
 
     with open(CATALOG_FILE, "w") as f:
         json.dump(catalog, f, indent=2, ensure_ascii=False)

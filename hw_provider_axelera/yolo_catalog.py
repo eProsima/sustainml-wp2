@@ -17,8 +17,9 @@ The models, their goals and their figures live in yolo_models.json. Each model h
 accuracy and FPS Axelera publishes (reference) and the values measured on our board or computed
 from its ONNX file (measured, how in its "measurement"). Measured values are used when present,
 placeholders where not yet: the latency from the full-load FPS, and, while the board's power is
-not measured (it has no power sensor), the datasheet typical power of axelera_devices.yaml. The
-result says where each value comes from in its "source".
+not measured (it has no power sensor), an estimate from the datasheet typical power of
+axelera_devices.yaml and how busy the chip is. The result says where each value comes from in
+its "source".
 """
 
 import json
@@ -78,6 +79,12 @@ def resources(model: dict) -> dict:
     throughput: inferences per second with all its AIPU cores busy, each one on its own input.
     A value not measured yet is a placeholder (the catalog's "measurement" says which), and
     "source" says so.
+
+    The board cannot measure its power, so it is estimated as CarbonTracker does for a device it
+    cannot read, watts x utilization: the datasheet typical power (the midpoint of its range, at
+    maximum performance) x chip_busy, the share of the latency the chip computes, (1 / chip FPS)
+    / latency. Both FPS are measured in the same runs, so the energy of one inference, power x
+    latency, is the typical power x the chip's own time per inference.
     """
     catalog = load_catalog()
     measured = model.get("measured") or {}
@@ -102,18 +109,32 @@ def resources(model: dict) -> dict:
         latency_source = (f"placeholder, not measured: full-load time per inference x {ratio:.2f}, "
                           f"the ratio of the {len(ratios)} model(s) measured both ways")
 
+    # Share of the latency the chip computes: its own time per inference over the whole inference
+    chip_busy = None
+    if measured.get("chip_fps") and measured.get("latency_s"):
+        chip_busy = min(1.0, 1.0 / (float(measured["chip_fps"]) * float(measured["latency_s"])))
+
     power = measured.get("power_w")
     if power:
         power_source = "measured"
     else:
         spec = get_devices()[AXELERA_HW]
-        power = (float(spec["typical_power_w_min"]) + float(spec["typical_power_w_max"])) / 2.0
-        power_source = (f"placeholder, not measured (no power sensor on the board): datasheet typical "
-                        f"{spec['typical_power_w_min']}-{spec['typical_power_w_max']} W, midpoint")
+        typical = (float(spec["typical_power_w_min"]) + float(spec["typical_power_w_max"])) / 2.0
+        datasheet = (f"datasheet typical {float(spec['typical_power_w_min']):g}-"
+                     f"{float(spec['typical_power_w_max']):g} W (midpoint {typical:g} W)")
+        if chip_busy is not None:
+            power = typical * chip_busy
+            power_source = (f"estimate, not measured (no power sensor on the board): {datasheet} x chip "
+                            f"busy {chip_busy:.1%} of the latency (measured), watts x utilization as "
+                            f"CarbonTracker's simulated devices")
+        else:
+            power = typical
+            power_source = f"placeholder, not measured (no power sensor on the board): {datasheet}"
 
     return {
         "latency_s": float(latency),
         "full_load_fps": float(full_load_fps),
+        "chip_busy": chip_busy,
         "power_w": float(power),
         "energy_per_inference_j": float(power) * float(latency),
         "weights_mb": measured.get("weights_mb"),
