@@ -450,8 +450,13 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             # Noinspection PyUnresolvedReferences
             upmem_layers.profiler_end()
 
-            latency = upmem_layers.profiler_get_latency() / 3600.0  # the simulator returns seconds; WP3 expects hours
-            power_consumption = upmem_layers.profiler_get_power_consumption()
+            latency_s = upmem_layers.profiler_get_latency()
+            latency = latency_s / 3600.0  # the simulator returns seconds; WP3 expects hours
+            # Power of the model on the selected hardware: the simulator's energy of the whole
+            # inference (prompt and reply) over its latency, so that power x latency, the energy
+            # WP3 computes for every hardware, is that energy. As for the FPGA and Axelera boards,
+            # it is the energy the model's work takes, without the hardware's idle power
+            power_consumption = upmem_layers.profiler_get_energy() / latency_s if latency_s > 0 else 0.0
 
         except Exception as e:
             import traceback

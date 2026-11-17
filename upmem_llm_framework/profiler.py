@@ -660,6 +660,11 @@ class UPM_Profiler:
     def get_latency(self):
         return (self.inference_time / 1e9)
 
+    # Energy of the whole inference in J, prompt (summarization) and reply (generation), whose
+    # time is get_latency(). The simulator counts energy in pJ
+    def get_energy(self):
+        return (sum(self.sum_energy.values()) + sum(self.gen_energy.values())) / 1e12
+
     def get_power_consumption(self):
         gen_energy_mJ = 0
         if self.summarization_time == 0:
