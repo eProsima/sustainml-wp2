@@ -16,9 +16,9 @@
 The models, their goals and their figures live in yolo_models.json. Each model has the
 accuracy and FPS Axelera publishes (reference) and the values measured on our board or computed
 from its ONNX file (measured, how in its "measurement"). Measured values are used when present,
-placeholders where not: the latency from the full-load FPS, and the power from the datasheet
-typical power of axelera_devices.yaml and how busy the chip is. The result says where each value
-comes from in its "source".
+placeholders where not, for the latency (from the full-load FPS) and the full-load FPS (Axelera's
+reference); the power has none, every model must have it measured. The result says where each
+value comes from in its "source".
 """
 
 import json
@@ -80,10 +80,9 @@ def resources(model: dict) -> dict:
     "source" says so.
 
     The power is the card's extra power while it runs one input alone, measured at the wall with
-    the host CPU's share removed (the board has no power sensor). For a model without it, it is
-    estimated as CarbonTracker does for a device it cannot read, watts x utilization: the
-    datasheet typical power (the midpoint of its range, at maximum performance) x chip_busy, the
-    share of the latency the chip computes, (1 / chip FPS) / latency.
+    the host CPU's share removed (the board has no power sensor), as the power of every hardware
+    in SustainML leaves out its idle power. It has no placeholder: an estimate would not be
+    comparable with the measured values, so a model without it is an error of the catalog.
     """
     catalog = load_catalog()
     measured = model.get("measured") or {}
@@ -108,38 +107,20 @@ def resources(model: dict) -> dict:
         latency_source = (f"placeholder, not measured: full-load time per inference x {ratio:.2f}, "
                           f"the ratio of the {len(ratios)} model(s) measured both ways")
 
-    # Share of the latency the chip computes: its own time per inference over the whole inference
-    chip_busy = None
-    if measured.get("chip_fps") and measured.get("latency_s"):
-        chip_busy = min(1.0, 1.0 / (float(measured["chip_fps"]) * float(measured["latency_s"])))
-
     power = measured.get("power_w")
-    if power:
-        power_source = "measured"
-    else:
-        spec = get_devices()[AXELERA_HW]
-        typical = (float(spec["typical_power_w_min"]) + float(spec["typical_power_w_max"])) / 2.0
-        datasheet = (f"datasheet typical {float(spec['typical_power_w_min']):g}-"
-                     f"{float(spec['typical_power_w_max']):g} W (midpoint {typical:g} W)")
-        if chip_busy is not None:
-            power = typical * chip_busy
-            power_source = (f"estimate, not measured (no power sensor on the board): {datasheet} x chip "
-                            f"busy {chip_busy:.1%} of the latency (measured), watts x utilization as "
-                            f"CarbonTracker's simulated devices")
-        else:
-            power = typical
-            power_source = f"placeholder, not measured (no power sensor on the board): {datasheet}"
+    if not power:
+        raise ValueError(f"{model['name']}: no measured power_w in yolo_models.json "
+                         f"(import it with import_measurements.py --power)")
 
     return {
         "latency_s": float(latency),
         "full_load_fps": float(full_load_fps),
-        "chip_busy": chip_busy,
         "power_w": float(power),
         "energy_per_inference_j": float(power) * float(latency),
         "weights_mb": measured.get("weights_mb"),
         "working_mb": measured.get("working_mb"),
         "memory_mb": measured.get("memory_mb"),
-        "source": {"latency": latency_source, "full_load_fps": full_load_source, "power": power_source,
+        "source": {"latency": latency_source, "full_load_fps": full_load_source, "power": "measured",
                    "memory": "computed from the ONNX file" if measured.get("memory_mb") is not None
                    else "unknown"},
     }

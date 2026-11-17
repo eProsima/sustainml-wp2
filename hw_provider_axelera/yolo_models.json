@@ -8,7 +8,7 @@
     "  full_load_fps  inferences per second with all AIPU cores busy (the board's throughput)",
     "  memory_mb      weights_mb + working_mb, computed as for every model in SustainML (model_memory.py)",
     "  power_w        the card's extra power while running one input alone, measured at the wall with the host CPU's share removed",
-    "null values are placeholders that yolo_catalog.resources() fills, saying so in its \"source\".",
+    "null latency_s or full_load_fps are placeholders that yolo_catalog.resources() fills, saying so in its \"source\"; power_w must be measured.",
     "import_measurements.py puts new measurements in this file."
   ],
   "hardware": "Axelera Edge 130p",
@@ -1244,8 +1244,7 @@
     "memory": "model_memory.onnx_memory_mb() of the model's ONNX file at its input resolution: weights plus the peak working memory of one input, floating-point values at 32 bits",
     "power": "the card's extra power while running one input alone (same axrunmodel command as the latency). Measured 2026-11-16, all 36 models: the PC's power at the wall with a Shelly Plug M Gen3 and the CPU package power with Intel RAPL, once per second, idle then running. power_w = ((P_wall,run - P_wall,idle) - f(P_RAPL,run - P_RAPL,idle)) x eta, where f is what the CPU's extra power costs at the wall (1.32-1.56 wall W per CPU W), calibrated with CPU-only loads from +0.1 to +18 W on 2026-11-16 and 2026-11-17, and eta is the incremental efficiency of the PC's power supply (Dell L360ES240-00, from its 80 PLUS report: 0.882 per extra watt below 5 % load, 0.941 from 5 to 10 %; 0.88-0.92 per run). The host CPU's share and the card's idle power are not included. 60 s idle and 60 s run, 3 times, for yolo11n, yolo11l, yolo26x, yolo26x-obb and yolo26lsem (spread at most 0.44 W); 60 s idle and 120 s run, once, for the others. Range with the CPU correction +-5 % and eta 0.941 below 5 % load as the high end: about +-0.5 W for the small models, 0.2-0.5 W wide for the large ones. The board has no power sensor (axmonitor cannot read it). Datasheet: typical 8-15 W running DNNs at maximum performance (all 4 cores) at 25 C, TDP 19 W",
     "placeholders": {
-      "latency_s": "the full-load time per inference (1 / full_load_fps, else 1 / the reference FPS) times the mean ratio latency_s x full_load_fps of the models measured both ways",
-      "power_w": "estimate: the datasheet typical power of axelera_devices.yaml (midpoint, 11.5 W) x the share of the latency the chip computes, (1 / chip_fps) / latency_s, as CarbonTracker does for devices it cannot read (watts x utilization). Without chip_fps, the datasheet midpoint alone"
+      "latency_s": "the full-load time per inference (1 / full_load_fps, else 1 / the reference FPS) times the mean ratio latency_s x full_load_fps of the models measured both ways"
     }
   }
 }
