@@ -14,7 +14,8 @@
 """Puts the values measured on the Axelera board, and the memory of the models, in yolo_models.json.
 
   --latency CSV    one input alone (measure_single_yolo.sh): measured.latency_s = 1 / mean system FPS,
-                   and measured.chip_fps = mean chip (dev) FPS, from which the power is estimated
+                   and measured.chip_fps = mean chip (dev) FPS
+  --power CSV      card power (measure_power_yolo.sh, analyze_power.py): measured.power_w = mean power_w
   --full-load CSV  all cores (measure_all_yolo.sh): measured.full_load_fps = mean system FPS
   --memory         measured weights_mb, working_mb, memory_mb and parameters, computed from each
                    model's ONNX file as for any ONNX model (model_memory.onnx_memory_mb). The file is
@@ -22,7 +23,8 @@
                    downloaded from onnx_url
   --models M ...   only these models (default: all)
 
-The CSVs have the columns model,task,input,run,dev_fps,host_fps,system_fps,... (one row per run).
+The latency and full-load CSVs have the columns model,task,input,run,dev_fps,host_fps,system_fps,...
+(one row per run); the power CSV has the columns model,power_w,... (one row per model).
 Usage, from sustainml-wp2: python3 hw_provider_axelera/import_measurements.py --latency single.csv
 """
 
@@ -85,6 +87,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--latency")
     parser.add_argument("--full-load")
+    parser.add_argument("--power")
     parser.add_argument("--memory", action="store_true")
     parser.add_argument("--onnx-dir")
     parser.add_argument("--models", nargs="+")
@@ -99,16 +102,18 @@ def main():
         imports += [("latency_s", args.latency, "system_fps"), ("chip_fps", args.latency, "dev_fps")]
     if args.full_load:
         imports.append(("full_load_fps", args.full_load, "system_fps"))
+    if args.power:
+        imports.append(("power_w", args.power, "power_w"))
     for key, path, column in imports:
-        for name, fps in mean_column(path, column).items():
+        for name, value in mean_column(path, column).items():
             model = next((m for m in models if m["name"] == name), None)
             if model is None:
                 print(f"{name}: not in the catalog, skipped")
                 continue
             if key == "latency_s":
-                model["measured"][key] = round(1.0 / fps, 6)
+                model["measured"][key] = round(1.0 / value, 6)
             else:
-                model["measured"][key] = round(fps, 2 if key == "chip_fps" else 1)
+                model["measured"][key] = round(value, 1 if key == "full_load_fps" else 2)
             print(f"{name}: {key} = {model['measured'][key]}")
 
     if args.memory:

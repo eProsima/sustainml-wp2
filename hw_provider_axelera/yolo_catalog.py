@@ -16,10 +16,9 @@
 The models, their goals and their figures live in yolo_models.json. Each model has the
 accuracy and FPS Axelera publishes (reference) and the values measured on our board or computed
 from its ONNX file (measured, how in its "measurement"). Measured values are used when present,
-placeholders where not yet: the latency from the full-load FPS, and, while the board's power is
-not measured (it has no power sensor), an estimate from the datasheet typical power of
-axelera_devices.yaml and how busy the chip is. The result says where each value comes from in
-its "source".
+placeholders where not: the latency from the full-load FPS, and the power from the datasheet
+typical power of axelera_devices.yaml and how busy the chip is. The result says where each value
+comes from in its "source".
 """
 
 import json
@@ -80,11 +79,11 @@ def resources(model: dict) -> dict:
     A value not measured yet is a placeholder (the catalog's "measurement" says which), and
     "source" says so.
 
-    The board cannot measure its power, so it is estimated as CarbonTracker does for a device it
-    cannot read, watts x utilization: the datasheet typical power (the midpoint of its range, at
-    maximum performance) x chip_busy, the share of the latency the chip computes, (1 / chip FPS)
-    / latency. Both FPS are measured in the same runs, so the energy of one inference, power x
-    latency, is the typical power x the chip's own time per inference.
+    The power is the card's extra power while it runs one input alone, measured at the wall with
+    the host CPU's share removed (the board has no power sensor). For a model without it, it is
+    estimated as CarbonTracker does for a device it cannot read, watts x utilization: the
+    datasheet typical power (the midpoint of its range, at maximum performance) x chip_busy, the
+    share of the latency the chip computes, (1 / chip FPS) / latency.
     """
     catalog = load_catalog()
     measured = model.get("measured") or {}

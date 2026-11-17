@@ -7,7 +7,7 @@
     "  chip_fps       in the same runs, inferences per second of the chip alone (dev FPS): 1 / chip_fps is the chip's time per inference",
     "  full_load_fps  inferences per second with all AIPU cores busy (the board's throughput)",
     "  memory_mb      weights_mb + working_mb, computed as for every model in SustainML (model_memory.py)",
-    "  power_w        null: this board revision has no power sensor, so yolo_catalog.resources() estimates it",
+    "  power_w        the card's extra power while running one input alone, measured at the wall with the host CPU's share removed",
     "null values are placeholders that yolo_catalog.resources() fills, saying so in its \"source\".",
     "import_measurements.py puts new measurements in this file."
   ],
@@ -74,7 +74,7 @@
         "working_mb": 18.75,
         "memory_mb": 28.73,
         "parameters": 2616248,
-        "power_w": null
+        "power_w": 1.17
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11n.onnx",
       "onnx_md5": "d00108b1a46170499d67a80825531d26"
@@ -107,7 +107,7 @@
         "working_mb": 37.5,
         "memory_mb": 73.53,
         "parameters": 9443804,
-        "power_w": null
+        "power_w": 1.33
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11s.onnx",
       "onnx_md5": "1acf9436adb299ff370b94feec8b28c2"
@@ -140,7 +140,7 @@
         "working_mb": 75.0,
         "memory_mb": 151.64,
         "parameters": 20091754,
-        "power_w": null
+        "power_w": 1.98
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11m.onnx",
       "onnx_md5": "8385c5e22f0d91eb20133afd021852c5"
@@ -173,7 +173,7 @@
         "working_mb": 75.0,
         "memory_mb": 171.67,
         "parameters": 25341034,
-        "power_w": null
+        "power_w": 2.22
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11l.onnx",
       "onnx_md5": "25f89c87c02e08e2db4c93245c74e6e8"
@@ -206,7 +206,7 @@
         "working_mb": 112.5,
         "memory_mb": 329.63,
         "parameters": 56919467,
-        "power_w": null
+        "power_w": 2.65
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11x.onnx",
       "onnx_md5": "e054f563a804240c70d9b52026d9a6cf"
@@ -239,7 +239,7 @@
         "working_mb": 18.75,
         "memory_mb": 28.1,
         "parameters": 2450977,
-        "power_w": null
+        "power_w": 1.02
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26n-202601-official.onnx",
       "onnx_md5": "ceafc44740a79eb7e6e03ecb8999698b"
@@ -272,7 +272,7 @@
         "working_mb": 37.5,
         "memory_mb": 73.89,
         "parameters": 9538185,
-        "power_w": null
+        "power_w": 1.49
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26s-202601-official.onnx",
       "onnx_md5": "325db67dc0ae2b88cf506f86f29602cb"
@@ -305,7 +305,7 @@
         "working_mb": 75.0,
         "memory_mb": 153.02,
         "parameters": 20453175,
-        "power_w": null
+        "power_w": 1.89
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26m-202601-official.onnx",
       "onnx_md5": "65c1c818f42cedfbd0d7329f0339e73e"
@@ -338,7 +338,7 @@
         "working_mb": 75.0,
         "memory_mb": 169.79,
         "parameters": 24849463,
-        "power_w": null
+        "power_w": 1.91
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26l-202601-official.onnx",
       "onnx_md5": "c470ba4bd94a570ab8e3000a9b7d8aee"
@@ -371,7 +371,7 @@
         "working_mb": 112.5,
         "memory_mb": 325.24,
         "parameters": 55767991,
-        "power_w": null
+        "power_w": 2.16
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26x-202601-official.onnx",
       "onnx_md5": "5fb1fc33b3909cdd44564e4c628e8a15"
@@ -404,7 +404,7 @@
         "working_mb": 48.0,
         "memory_mb": 58.38,
         "parameters": 2721206,
-        "power_w": null
+        "power_w": 1.41
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11n-obb-ultralytics.onnx",
       "onnx_md5": "69e27a17b964fcc66a3e4a09e0a40b0d"
@@ -437,7 +437,7 @@
         "working_mb": 192.0,
         "memory_mb": 291.71,
         "parameters": 26139374,
-        "power_w": null
+        "power_w": 2.85
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo11l-obb.onnx",
       "onnx_md5": "18097fc96b0c4c8c51d2f0bcf98ac427"
@@ -470,7 +470,7 @@
         "working_mb": 48.0,
         "memory_mb": 57.34,
         "parameters": 2449390,
-        "power_w": null
+        "power_w": 1.52
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26n-obb-202602-official.onnx",
       "onnx_md5": "b69118da67073c181b22c073283f1389"
@@ -503,7 +503,7 @@
         "working_mb": 96.0,
         "memory_mb": 133.22,
         "parameters": 9757031,
-        "power_w": null
+        "power_w": 1.67
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26s-obb-202602-official.onnx",
       "onnx_md5": "2f2f9a26f7f736849450a7c58b794fd8"
@@ -536,7 +536,7 @@
         "working_mb": 192.0,
         "memory_mb": 272.91,
         "parameters": 21209525,
-        "power_w": null
+        "power_w": 2.53
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26m-obb-202602-official.onnx",
       "onnx_md5": "70c7cb9b15493cb41e926ac2523a822f"
@@ -569,7 +569,7 @@
         "working_mb": 192.0,
         "memory_mb": 289.68,
         "parameters": 25605813,
-        "power_w": null
+        "power_w": 2.73
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26l-obb-202602-official.onnx",
       "onnx_md5": "7c579b9e04e1bc694ca6efc819d3fa19"
@@ -602,7 +602,7 @@
         "working_mb": 288.0,
         "memory_mb": 507.57,
         "parameters": 57559510,
-        "power_w": null
+        "power_w": 2.21
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/object_detection/yolo26x-obb-202602-official.onnx",
       "onnx_md5": "e8e80f50e37fb7947e761abff4627d17"
@@ -635,7 +635,7 @@
         "working_mb": 24.22,
         "memory_mb": 35.16,
         "parameters": 2868708,
-        "power_w": null
+        "power_w": 2.0
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo11n-seg.onnx",
       "onnx_md5": "572016169506bc288be930070a81d2db"
@@ -668,7 +668,7 @@
         "working_mb": 88.28,
         "memory_mb": 193.74,
         "parameters": 27646315,
-        "power_w": null
+        "power_w": 2.1
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo11l-seg.onnx",
       "onnx_md5": "9eb9d3418c2f05329cdc4f969cfa6f21"
@@ -701,7 +701,7 @@
         "working_mb": 22.47,
         "memory_mb": 32.86,
         "parameters": 2723031,
-        "power_w": null
+        "power_w": 1.78
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26n-seg-202602-official.onnx",
       "onnx_md5": "f81e8ec0be839dd1f41e17a34b7fe93f"
@@ -734,7 +734,7 @@
         "working_mb": 41.22,
         "memory_mb": 80.88,
         "parameters": 10396352,
-        "power_w": null
+        "power_w": 1.75
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26s-seg-202602-official.onnx",
       "onnx_md5": "3ca8a68a8bbe3206fa07677f813580eb"
@@ -767,7 +767,7 @@
         "working_mb": 78.72,
         "memory_mb": 168.63,
         "parameters": 23569198,
-        "power_w": null
+        "power_w": 1.84
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26m-seg-202602-official.onnx",
       "onnx_md5": "b0d7cadefa92ea848a08689a999c7afe"
@@ -800,7 +800,7 @@
         "working_mb": 78.72,
         "memory_mb": 185.4,
         "parameters": 27965486,
-        "power_w": null
+        "power_w": 2.12
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26l-seg-202602-official.onnx",
       "onnx_md5": "9d3a69275b54a9b9ac530e3a5d6a1e60"
@@ -833,7 +833,7 @@
         "working_mb": 116.22,
         "memory_mb": 355.86,
         "parameters": 62819183,
-        "power_w": null
+        "power_w": 1.8
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/instance_segmentation/yolo26x-seg-202602-official.onnx",
       "onnx_md5": "f81b3f895f17350f036035f1dccaa5b3"
@@ -866,7 +866,7 @@
         "working_mb": 77.19,
         "memory_mb": 83.11,
         "parameters": 1552821,
-        "power_w": null
+        "power_w": 1.53
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26n-sem-202605-dynamic.onnx",
       "onnx_md5": "09ca4748abde914ddfa98178821a62c6"
@@ -899,7 +899,7 @@
         "working_mb": 96.0,
         "memory_mb": 119.63,
         "parameters": 6195518,
-        "power_w": null
+        "power_w": 2.05
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26s-sem-202605-dynamic.onnx",
       "onnx_md5": "ef407836f26612b47f9bec02d4729b91"
@@ -932,7 +932,7 @@
         "working_mb": 192.0,
         "memory_mb": 242.04,
         "parameters": 13118252,
-        "power_w": null
+        "power_w": 2.09
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26m-sem-202605-dynamic.onnx",
       "onnx_md5": "39bdb1b90686a2d6a67acf05ef12da77"
@@ -965,7 +965,7 @@
         "working_mb": 192.0,
         "memory_mb": 255.56,
         "parameters": 16661548,
-        "power_w": null
+        "power_w": 1.95
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26l-sem-202605-dynamic.onnx",
       "onnx_md5": "d1d42288fc4ea378a13c909d4d7c9acb"
@@ -998,7 +998,7 @@
         "working_mb": 288.0,
         "memory_mb": 430.92,
         "parameters": 37464620,
-        "power_w": null
+        "power_w": 1.34
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/semantic_segmentation/yolo26x-sem-202605-dynamic.onnx",
       "onnx_md5": "4dfc649dd00e5ab078b44027a7e45d3f"
@@ -1031,7 +1031,7 @@
         "working_mb": 18.75,
         "memory_mb": 29.69,
         "parameters": 2866516,
-        "power_w": null
+        "power_w": 1.34
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo11n-pose.onnx",
       "onnx_md5": "ffa277388dc15a97330b396ca4565a8a"
@@ -1064,7 +1064,7 @@
         "working_mb": 75.0,
         "memory_mb": 174.71,
         "parameters": 26138330,
-        "power_w": null
+        "power_w": 2.36
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo11l-pose.onnx",
       "onnx_md5": "a0c2124d8dfec01a427cc8b11bae0255"
@@ -1097,7 +1097,7 @@
         "working_mb": 18.75,
         "memory_mb": 29.91,
         "parameters": 2926548,
-        "power_w": null
+        "power_w": 1.19
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26n-pose-202602-official.onnx",
       "onnx_md5": "373c6c15ec5f405c7f7c923e8d97aa36"
@@ -1130,7 +1130,7 @@
         "working_mb": 37.5,
         "memory_mb": 77.02,
         "parameters": 10359805,
-        "power_w": null
+        "power_w": 1.48
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26s-pose-202602-official.onnx",
       "onnx_md5": "c9dd0f3c32db9af6a3327818063bbc9b"
@@ -1163,7 +1163,7 @@
         "working_mb": 75.0,
         "memory_mb": 157.16,
         "parameters": 21538219,
-        "power_w": null
+        "power_w": 2.0
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26m-pose-202602-official.onnx",
       "onnx_md5": "504ad7de27024ac53a84a7ecbdf2bd47"
@@ -1196,7 +1196,7 @@
         "working_mb": 75.0,
         "memory_mb": 173.93,
         "parameters": 25934507,
-        "power_w": null
+        "power_w": 2.19
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26l-pose-202602-official.onnx",
       "onnx_md5": "27d07fe7a8ed4c3905a3f0816d480156"
@@ -1229,7 +1229,7 @@
         "working_mb": 112.5,
         "memory_mb": 332.07,
         "parameters": 57557886,
-        "power_w": null
+        "power_w": 1.74
       },
       "onnx_url": "https://media.axelera.ai/artifacts/model_cards/weights/yolo/keypoint_detection/yolo26x-pose-202602-official.onnx",
       "onnx_md5": "25c3a464b3e17a296bd6b4427c442c20"
@@ -1242,7 +1242,7 @@
     "latency": "one input processed alone: axrunmodel build/<model>/<model>/1/model.json --seconds 10 --aipu-cores 1 --no-double-buffer, latency = 1 / system FPS (includes the PC-to-card transfer), mean of the runs. Measured 2026-11-10, all 36 models. The chip time (dev FPS) was the same in every run; the spread between runs (up to 15 %) is on the PC side",
     "full_load": "all 4 AIPU cores, one copy of the model each, with double buffering: axrunmodel build/<model>/<model>/1/model.json --seconds 10, 3 runs, mean system FPS. Measured 2026-11-03 to 2026-11-06, all 36 models. Used for frame-rate requirements, not as the latency",
     "memory": "model_memory.onnx_memory_mb() of the model's ONNX file at its input resolution: weights plus the peak working memory of one input, floating-point values at 32 bits",
-    "power": "not measured: the Edge 130p Rev 1.1 has no power sensor (axmonitor cannot read it; Axelera recommends a wall meter, P_run - P_idle). Datasheet: typical 8-15 W running DNNs at maximum performance at 25 C, TDP 19 W",
+    "power": "the card's extra power while running one input alone (same axrunmodel command as the latency). Measured 2026-11-16, all 36 models: the PC's power at the wall with a Shelly Plug M Gen3 and the CPU package power with Intel RAPL, once per second, idle then running. power_w = ((P_wall,run - P_wall,idle) - f(P_RAPL,run - P_RAPL,idle)) x eta, where f is what the CPU's extra power costs at the wall (1.32-1.56 wall W per CPU W), calibrated with CPU-only loads from +0.1 to +18 W on 2026-11-16 and 2026-11-17, and eta is the incremental efficiency of the PC's power supply (Dell L360ES240-00, from its 80 PLUS report: 0.882 per extra watt below 5 % load, 0.941 from 5 to 10 %; 0.88-0.92 per run). The host CPU's share and the card's idle power are not included. 60 s idle and 60 s run, 3 times, for yolo11n, yolo11l, yolo26x, yolo26x-obb and yolo26lsem (spread at most 0.44 W); 60 s idle and 120 s run, once, for the others. Range with the CPU correction +-5 % and eta 0.941 below 5 % load as the high end: about +-0.5 W for the small models, 0.2-0.5 W wide for the large ones. The board has no power sensor (axmonitor cannot read it). Datasheet: typical 8-15 W running DNNs at maximum performance (all 4 cores) at 25 C, TDP 19 W",
     "placeholders": {
       "latency_s": "the full-load time per inference (1 / full_load_fps, else 1 / the reference FPS) times the mean ratio latency_s x full_load_fps of the models measured both ways",
       "power_w": "estimate: the datasheet typical power of axelera_devices.yaml (midpoint, 11.5 W) x the share of the latency the chip computes, (1 / chip_fps) / latency_s, as CarbonTracker does for devices it cannot read (watts x utilization). Without chip_fps, the datasheet midpoint alone"
