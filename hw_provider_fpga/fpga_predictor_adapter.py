@@ -39,7 +39,10 @@ def predict_latency_energy(onnx_model_path: str,
       - predictor_model_energy_dynamic.onnx
       - predictor_model_energy_board_runtime.onnx
 
-    It returns latency, power_w (derived) and energy (board-runtime energy).
+    It returns the latency and the model's power and energy: the board's extra power while it runs
+    the model (energy_dynamic: board running minus board idle), as for every hardware in
+    SustainML. The board's own power while running, idle included (energy_board_runtime), is
+    returned too, for reference.
     """
     if stats_file is None:
         stats_file = os.path.join(PREDICTOR_HOME, device, "unet_models_stats.json")
@@ -87,20 +90,23 @@ def predict_latency_energy(onnx_model_path: str,
     energy_dynamic_J = float(np.array(edyn_pred).reshape(-1)[0])
     energy_board_J = float(np.array(eboard_pred).reshape(-1)[0])
 
-    # Average board power [W] from energy [J] and latency [s]
-    if lat_s > 0.0:
-        power_w = energy_board_J / lat_s
-    else:
-        power_w = 0.0
+    # Power of the model [W]: the board's extra power while it runs it, from its dynamic energy [J]
+    # and latency [s]. The board's idle power (about 18-21 W in DFKI's measurements) is left out,
+    # as it does not depend on the model. The predictor can return a slightly negative dynamic
+    # energy for the smallest models (as in the measurements it learnt from): counted as 0
+    energy_dynamic_J = max(energy_dynamic_J, 0.0)
+    power_w = energy_dynamic_J / lat_s if lat_s > 0.0 else 0.0
+    power_board_runtime_w = energy_board_J / lat_s if lat_s > 0.0 else 0.0
 
     return {
         "device": device,
         "latency_s": lat_s,
         "latency_h": lat_s / 3600.0,  # WP3 expects hours
         "power_w": power_w,
-        "energy_J": energy_board_J,
-        "energy_Wh": energy_board_J / 3600.0,
+        "energy_J": energy_dynamic_J,
+        "energy_Wh": energy_dynamic_J / 3600.0,
         "energy_dynamic_Wh": energy_dynamic_J / 3600.0,
+        "power_board_runtime_w": power_board_runtime_w,
         "energy_board_runtime_Wh": energy_board_J / 3600.0,
         "provenance": {
             "stats_file": os.path.relpath(stats_file, HERE),
