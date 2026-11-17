@@ -350,3 +350,6 @@ def profiler_get_power_consumption():
 
 def profiler_get_latency():
     return profiler.get_latency()
+
+def profiler_get_energy():
+    return profiler.get_energy()
