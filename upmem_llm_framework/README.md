@@ -19,9 +19,9 @@ Code identical to the fork (only the license header comment may differ):
 
 Modified by eProsima for SustainML:
 
-- `__init__.py`: also imports `upmem_llm_framework.options` and exports `profiler_get_power_consumption` and `profiler_get_latency`.
-- `profiler.py`: adds `get_latency()` and `get_power_consumption()`, guards the profiler summary against division by zero, and renames the summary banner to `HW PROFILER OUTPUT`.
-- `pytorch_upmem_layers.py`: adds `profiler_get_power_consumption()` and `profiler_get_latency()`, passes `layer_obj` to `profiler.forward_end` in the `UPM_Conv1D` layer wrapper, and removes a debug print.
+- `__init__.py`: also imports `upmem_llm_framework.options` and exports `profiler_get_latency` and `profiler_get_energy`.
+- `profiler.py`: adds `get_latency()` and `get_energy()`, guards the profiler summary against division by zero, and renames the summary banner to `HW PROFILER OUTPUT`.
+- `pytorch_upmem_layers.py`: adds `profiler_get_latency()` and `profiler_get_energy()`, passes `layer_obj` to `profiler.forward_end` in the `UPM_Conv1D` layer wrapper, and removes a debug print.
 
 In every file that carries a UPMEM header, the original copyright line is kept and a license line
 pointing to the MIT License, under which the project is published, has been added. In files where it was present,

@@ -664,14 +664,3 @@ class UPM_Profiler:
     # time is get_latency(). The simulator counts energy in pJ
     def get_energy(self):
         return (sum(self.sum_energy.values()) + sum(self.gen_energy.values())) / 1e12
-
-    def get_power_consumption(self):
-        gen_energy_mJ = 0
-        if self.summarization_time == 0:
-            return 0
-        inference_time_sec = self.inference_time / 1e9
-        sum_time_s = self.summarization_time / 1e9
-        gen_time_s = inference_time_sec - sum_time_s
-        for key, energy in self.gen_energy.items():
-                    gen_energy_mJ += energy / 1e9
-        return gen_energy_mJ / 1e3 / gen_time_s

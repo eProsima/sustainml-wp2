@@ -47,10 +47,6 @@ def is_axelera(hardware) -> bool:
     return (hardware or "").strip().lower() == AXELERA_HW.lower()
 
 
-def list_goals() -> list:
-    return list(load_catalog()["goals"].keys())
-
-
 def goal_descriptions() -> dict:
     return {name: g["description"] for name, g in load_catalog()["goals"].items()}
 
