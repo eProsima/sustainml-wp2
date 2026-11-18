@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""SustainML HW Resources Provider Node Implementation."""
+"""SustainML HW Constraints Node Implementation."""
 
 from sustainml_py.nodes.HardwareConstraintsNode import HardwareConstraintsNode
 
@@ -59,15 +59,9 @@ def task_callback(user_input, node_status, hw_constraints):
     # Pull values (use defaults if missing)
     mem_footprint = int(incoming.get("max_memory_footprint", mem_footprint))
     hw_req = incoming.get("hardware_required", hw_req)
-    hf_token = incoming.get("hf_token")
-    model_family = incoming.get("model_family")
 
     # Build outgoing extra_data preserving everything we received
     out_extra = dict(incoming)  # copy
-    if hf_token is not None:
-        out_extra["hf_token"] = hf_token
-    if model_family is not None:
-        out_extra["model_family"] = model_family
 
     # Forward the full extra_data downstream so HW_RESOURCES can read model_family
     try:

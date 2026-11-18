@@ -27,7 +27,10 @@ from hw_provider_fpga import predict_latency_energy
 
 import hw_provider_axelera
 
-# Managing UPMEMEM LLM
+# The FPGA of the DFKI predictor (CNNs only)
+FPGA_HW = "FPGA (xczu19eg-ffvb1517-2-i)"
+
+# Managing UPMEM LLM
 import upmem_llm_framework as upmem_layers
 import transformers
 import signal
@@ -257,7 +260,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
     is_cnn = mf == 'cnns'
 
     # Use DFKI predictor for xczu19eg target (only when user selected CNNs)
-    if is_cnn and hw_selected == "FPGA (xczu19eg-ffvb1517-2-i)":
+    if is_cnn and hw_selected == FPGA_HW:
         try:
             # 1) Pick an ONNX to use
             candidates = []
@@ -379,9 +382,6 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
             loaded_model = model
             print("Model, Tokenizer and Input loaded successfully")
-            print(f"Model: {model}")
-            print(f"Tokenizer: {tokenizer}")
-            print(f"Input: {input}")
 
             layer_mapping = {}
             for name, module in model.named_modules():
@@ -400,9 +400,6 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
                 layer_mapping=layer_mapping,
                 last_layer=last_layer,
             )
-            # In case we want to time the original execution (comment out profiler_start)
-            # start = time.time_ns()
-
             # Safe, minimal workload for HW profiling
             try:
                 # Attempt generation if supported
@@ -473,28 +470,15 @@ def configuration_callback(req, res):
             res.node_id(req.node_id())
             res.transaction_id(req.transaction_id())
 
-            # Retrieve Hardwares from sim_architectures.yaml
+            # The UPMEM simulator architectures, the Axelera board and the DFKI FPGA
             with open(os.path.dirname(__file__)+'/upmem_llm_framework/sim_architectures.yaml', 'r') as file:
                 upmem_devices = yaml.safe_load(file)
-
             axelera_devices = hw_provider_axelera.get_devices()
 
-            # Extract the hardware names
-            hardware_names = list(upmem_devices.keys()) + list(axelera_devices.keys())
-            hardware_names.append("FPGA (xczu19eg-ffvb1517-2-i)")  # Expose the DFKI FPGA predictor device
-
-            if not hardware_names:
-                res.success(False)
-                res.err_code(1)  # 0: No error || 1: Error
-            else:
-                res.success(True)
-                res.err_code(0)  # 0: No error || 1: Error
-            sorted_architectures = sorted(list(upmem_devices.keys()))
-            sorted_axelera_devices = sorted(list(axelera_devices.keys()))
-            sorted_hardware_names = ', '.join(
-                sorted_architectures + sorted_axelera_devices + ["FPGA (xczu19eg-ffvb1517-2-i)"]
-            )
-            res.configuration(json.dumps(dict(hardwares=sorted_hardware_names)))
+            hardware_names = sorted(upmem_devices.keys()) + sorted(axelera_devices.keys()) + [FPGA_HW]
+            res.success(True)
+            res.err_code(0)  # 0: No error || 1: Error
+            res.configuration(json.dumps(dict(hardwares=', '.join(hardware_names))))
 
         except Exception as e:
             print(f"Error getting types of hardwares from request: {e}")
