@@ -526,6 +526,21 @@ def configuration_callback(req, res):
             res.success(False)
             res.err_code(1)  # 0: No error || 1: Error
 
+    # The YOLO models of the Axelera board, with their accuracy and resources, for the YOLO models
+    # screen of the UI
+    elif req.configuration() == "yolo_models":
+        res.node_id(req.node_id())
+        res.transaction_id(req.transaction_id())
+        try:
+            res.configuration(json.dumps({"yolo_models": hw_provider_axelera.catalog_view()}))
+            res.success(True)
+            res.err_code(0)  # 0: No error || 1: Error
+        except Exception as e:
+            print(f"Error getting the YOLO models of the Axelera board: {e}")
+            res.configuration(json.dumps({"error": str(e)}))
+            res.success(False)
+            res.err_code(1)  # 0: No error || 1: Error
+
     else:
         res.node_id(req.node_id())
         res.transaction_id(req.transaction_id())

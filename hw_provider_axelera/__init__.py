@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .yolo_catalog import (AXELERA_HW, PRIORITIES, get_devices, get_model, goal_descriptions,
+from .yolo_catalog import (AXELERA_HW, PRIORITIES, catalog_view, get_devices, get_model, goal_descriptions,
                            is_axelera, list_goals, list_models, normalize_preferences, rank_models, resources)
