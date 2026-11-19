@@ -22,7 +22,6 @@ HERE = os.path.dirname(__file__)
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-import hw_provider_fpga
 from hw_provider_fpga import predict_latency_energy
 
 import hw_provider_axelera
@@ -261,28 +260,21 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
 
     # Use DFKI predictor for xczu19eg target (only when user selected CNNs)
     if is_cnn and hw_selected == FPGA_HW:
+        # The ONNX file of the selected U-Net model, given by the ML Model Provider node. Without
+        # it there is nothing to evaluate: report an error instead of evaluating another model
+        if not (isinstance(model_path, str) and model_path.endswith(".onnx") and os.path.isfile(model_path)):
+            no_model = ml_model.model() == "NO_MODEL"
+            print(f"[ERROR][DFKI FPGA] No ONNX file for model '{ml_model.model()}' (model_path '{model_path}')")
+            hw.hw_description(hw_selected if no_model else "Error")
+            hw.power_consumption(0.0)
+            hw.latency(0.0)
+            error_info = {"error_code": "NO_MODEL" if no_model else "MODEL_FILE_NOT_FOUND",
+                          "error": f"No ONNX file for model '{ml_model.model()}'. HW resources not computed."}
+            hw.extra_data(json.dumps(error_info).encode("utf-8"))
+            return
+
         try:
-            # 1) Pick an ONNX to use
-            candidates = []
-            if isinstance(model_path, str) and model_path.endswith(".onnx") and os.path.isfile(model_path):
-                candidates.append(model_path)
-
-            # Vendored test models (if any)
-            vendored_dir = os.path.join(os.path.dirname(hw_provider_fpga.__file__), "vendor", "sustain_ml_predictor", "unet_models")
-            vendored_dir = os.path.abspath(vendored_dir)
-            if os.path.isdir(vendored_dir):
-                for f in os.listdir(vendored_dir):
-                    if f.endswith(".onnx"):
-                        candidates.append(os.path.join(vendored_dir, f))
-
-            if not candidates:
-                raise FileNotFoundError("No ONNX file available for FPGA prediction. "
-                                        "Provide an ONNX CNN (U-Net) in the model step or vendor one into unet_models/.")
-
-            onnx_to_use = candidates[0]
-
-            # 2) Run predictor
-            pred = predict_latency_energy(onnx_to_use)
+            pred = predict_latency_energy(model_path)
             latency = float(pred.get("latency_h", 0.0))
             power_consumption = float(pred.get("power_w", 0.0))
 
@@ -292,12 +284,16 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             except Exception:
                 pass
 
-            print(f"[DFKI FPGA] using {onnx_to_use}")
+            print(f"[DFKI FPGA] using {model_path}")
 
         except Exception as e:
             print(f"[ERROR][DFKI FPGA] {e}")
-            latency = 0.0
-            power_consumption = 0.0
+            hw.hw_description("Error")
+            hw.power_consumption(0.0)
+            hw.latency(0.0)
+            error_info = {"error": f"Failed to evaluate the model on the FPGA: {e}"}
+            hw.extra_data(json.dumps(error_info).encode("utf-8"))
+            return
 
     # CNNs on the Axelera board: the YOLO models of the Voyager SDK zoo, with the latency, power
     # and memory measured on the board (hw_provider_axelera/yolo_models.json). Nothing to load
