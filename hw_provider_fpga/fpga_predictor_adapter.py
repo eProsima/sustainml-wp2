@@ -14,7 +14,7 @@
 """SustainML FPGA Predictor Adapter Implementation."""
 
 import numpy as np
-import hashlib, json, os
+import hashlib, os
 
 from .vendor.sustain_ml_predictor.predictor import predict, get_denormalizer  # Vendored DFKI code
 
@@ -30,30 +30,12 @@ def _hash_file(path: str) -> str:
             h.update(chunk)
     return h.hexdigest()
 
-# DFKI's measurement of the model on the board (measurements.jsonl), when it is one of the U-Nets
-# they measured: the same file as the one of that name in unet_models/. Else None
-def _measurement(onnx_model_path: str, model_hash: str, device_dir: str):
-    name = os.path.basename(onnx_model_path)
-    measured_model = os.path.join(PREDICTOR_HOME, "unet_models", name)
-    measurements = os.path.join(device_dir, "measurements.jsonl")
-    if not (os.path.isfile(measurements) and os.path.isfile(measured_model)):
-        return None
-    if _hash_file(measured_model) != model_hash:
-        return None
-    with open(measurements, "r") as f:
-        for line in f:
-            if line.strip():
-                m = json.loads(line)
-                if m.get("model_file") == name:
-                    return m
-    return None
-
 def predict_latency_energy(onnx_model_path: str,
                           device: str = DEFAULT_DEVICE,
                           stats_file: str = None) -> dict:
     """
-    Latency, power and energy of a U-Net on the FPGA board: DFKI's measurements for the U-Nets they
-    measured (all those in unet_models/), else the predictions of the models DFKI trained on them:
+    Latency, power and energy of a U-Net on the FPGA board, predicted by the models DFKI trained on
+    their measurements of the U-Nets in unet_models/:
       - predictor_model_latency.onnx
       - predictor_model_energy_dynamic.onnx
       - predictor_model_energy_board_runtime.onnx
@@ -80,44 +62,34 @@ def predict_latency_energy(onnx_model_path: str,
 
     model_hash = _hash_file(onnx_model_path)
 
-    # A U-Net DFKI measured: its measurement. The predictors, trained on these measurements, miss
-    # them by about 1 mJ (up to 12 mJ), as much as the whole energy of the smallest ones
-    measured = _measurement(onnx_model_path, model_hash, device_dir)
-    if measured is not None:
-        lat_s = float(measured["latency"])
-        energy_dynamic_J = float(measured["energy_dynamic"])
-        energy_board_J = float(measured["energy_board_runtime"])
-        source = "measured by DFKI on the board (measurements.jsonl)"
-    else:
-        denorm_latency        = get_denormalizer("latency",            meas_stats_file)
-        denorm_energy_dynamic = get_denormalizer("energy_dynamic",     meas_stats_file)
-        denorm_energy_board   = get_denormalizer("energy_board_runtime", meas_stats_file)
+    denorm_latency        = get_denormalizer("latency",            meas_stats_file)
+    denorm_energy_dynamic = get_denormalizer("energy_dynamic",     meas_stats_file)
+    denorm_energy_board   = get_denormalizer("energy_board_runtime", meas_stats_file)
 
-        # Predict latency
-        lat_pred = predict(onnx_model_file=onnx_model_path,
-                            models_stats_file=stats_file,
-                            prediction_model_file=lat_path,
-                            denormalizer=denorm_latency)
+    # Predict latency
+    lat_pred = predict(onnx_model_file=onnx_model_path,
+                        models_stats_file=stats_file,
+                        prediction_model_file=lat_path,
+                        denormalizer=denorm_latency)
 
-        # Predict dynamic energy
-        edyn_pred = predict(onnx_model_file=onnx_model_path,
-                            models_stats_file=stats_file,
-                            prediction_model_file=edyn_path,
-                            denormalizer=denorm_energy_dynamic)
+    # Predict dynamic energy
+    edyn_pred = predict(onnx_model_file=onnx_model_path,
+                        models_stats_file=stats_file,
+                        prediction_model_file=edyn_path,
+                        denormalizer=denorm_energy_dynamic)
 
-        # Predict board runtime energy
-        eboard_pred = predict(onnx_model_file=onnx_model_path,
-                            models_stats_file=stats_file,
-                            prediction_model_file=eboard_path,
-                            denormalizer=denorm_energy_board)
+    # Predict board runtime energy
+    eboard_pred = predict(onnx_model_file=onnx_model_path,
+                        models_stats_file=stats_file,
+                        prediction_model_file=eboard_path,
+                        denormalizer=denorm_energy_board)
 
-        # The predictors return the units of the DFKI measurements they were trained on
-        # (measurements.jsonl): latency of a single input in seconds and energy in joules
-        # (energy_board_runtime = power_board_runtime [W] * latency [s])
-        lat_s = float(np.array(lat_pred).reshape(-1)[0])
-        energy_dynamic_J = float(np.array(edyn_pred).reshape(-1)[0])
-        energy_board_J = float(np.array(eboard_pred).reshape(-1)[0])
-        source = "predicted by DFKI's predictors"
+    # The predictors return the units of the DFKI measurements they were trained on
+    # (measurements.jsonl): latency of a single input in seconds and energy in joules
+    # (energy_board_runtime = power_board_runtime [W] * latency [s])
+    lat_s = float(np.array(lat_pred).reshape(-1)[0])
+    energy_dynamic_J = float(np.array(edyn_pred).reshape(-1)[0])
+    energy_board_J = float(np.array(eboard_pred).reshape(-1)[0])
 
     # Power of the model [W]: the board's extra power while it runs it, from its dynamic energy [J]
     # and latency [s]. The board's idle power (about 18-21 W in DFKI's measurements) is left out,
@@ -138,10 +110,10 @@ def predict_latency_energy(onnx_model_path: str,
         "power_board_runtime_w": power_board_runtime_w,
         "energy_board_runtime_Wh": energy_board_J / 3600.0,
         "provenance": {
-            "source": source,
+            "source": "predicted by DFKI's predictors",
             "stats_file": os.path.relpath(stats_file, HERE),
             "measurements_stats_file": os.path.relpath(meas_stats_file, HERE),
-            "predictors": [] if measured is not None else ["latency", "energy_dynamic", "energy_board_runtime"],
+            "predictors": ["latency", "energy_dynamic", "energy_board_runtime"],
             "model_sha256": model_hash,
             "assets_dir": os.path.relpath(device_dir, HERE),
         }
