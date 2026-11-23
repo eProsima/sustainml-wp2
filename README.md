@@ -44,8 +44,8 @@ This repository contains two nodes of the SustainML Framework:
   model on that hardware, in one of three ways:
   - Transformers models on the processing-in-memory and GPU architectures of the UPMEM LLM simulator (`upmem_llm_framework`).
   - YOLO models on the Axelera Edge 130p board, from the measurements of each model on the board (`hw_provider_axelera`).
-  - U-Net models on the FPGA `xczu19eg-ffvb1517-2-i`: DFKI's measurements of the 217 U-Nets they measured, or the
-    estimate of DFKI's predictor for other U-Nets (`hw_provider_fpga`).
+  - U-Net models on the FPGA `xczu19eg-ffvb1517-2-i`: the latency and energy predicted by DFKI's predictor, for the
+    217 U-Nets of the catalogue as for any other U-Net (`hw_provider_fpga`).
 
 The memory footprint of the models (weights plus working memory) is computed in `model_memory.py`.
 
