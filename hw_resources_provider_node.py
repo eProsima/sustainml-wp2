@@ -22,7 +22,8 @@ HERE = os.path.dirname(__file__)
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-from hw_provider_fpga import predict_latency_energy
+from hw_provider_fpga import predict_latency_energy, DEFAULT_FPS as FPGA_DEFAULT_FPS, \
+    DEFAULT_IMPLEMENTATION as FPGA_DEFAULT_IMPLEMENTATION
 
 import hw_provider_axelera
 
@@ -234,12 +235,18 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             model_path = ""
 
     model_family = "Transformers"
-    # Try to read model_family from hw_constraints.extra_data
+    # FPGA design of a U-Net: target frame rate (18 or 35 FPS) and where the skip connections are
+    # kept ("on_chip" or "off_chip"), optional in extra_data, else the default of DFKI's predictor
+    fpga_fps = FPGA_DEFAULT_FPS
+    fpga_implementation = FPGA_DEFAULT_IMPLEMENTATION
+    # Try to read model_family (and the FPGA design) from hw_constraints.extra_data
     try:
         b = hw_constraints.extra_data()
         if b:
             d = json.loads(bytes(b).decode('utf-8'))
             model_family = d.get("model_family", model_family)
+            fpga_fps = d.get("fpga_fps", fpga_fps)
+            fpga_implementation = d.get("fpga_implementation", fpga_implementation)
     except Exception as e:
         print(f"[WARN] extra_data parse error: {e}")
 
@@ -274,7 +281,7 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             return
 
         try:
-            pred = predict_latency_energy(model_path)
+            pred = predict_latency_energy(model_path, fpga_fps, fpga_implementation)
             latency = float(pred.get("latency_h", 0.0))
             power_consumption = float(pred.get("power_w", 0.0))
 
@@ -284,7 +291,14 @@ def task_callback(ml_model, app_requirements, hw_constraints, node_status, hw):
             except Exception:
                 pass
 
-            print(f"[DFKI FPGA] using {model_path}")
+            print(f"[DFKI FPGA] using {model_path} at {pred['fps']} FPS, {pred['implementation']}: "
+                  f"{pred['latency_s'] * 1000.0:.2f} ms per frame, {pred['power_w']:.3f} W")
+            if not pred["measured_by_dfki"]:
+                print(f"[WARN][DFKI FPGA] DFKI did not measure this U-Net at {pred['fps']} FPS, "
+                      f"{pred['implementation']}: it may not fit on the FPGA under that design")
+            if pred["outside_trained_range"]:
+                print(f"[WARN][DFKI FPGA] predictions outside the trained range: "
+                      f"{', '.join(pred['outside_trained_range'])}")
 
         except Exception as e:
             print(f"[ERROR][DFKI FPGA] {e}")

@@ -1,0 +1,137 @@
+{
+  "node_numeric_features": [
+    "flops",
+    "params",
+    "cin",
+    "cout",
+    "sin",
+    "sout",
+    "kernel",
+    "in_degree",
+    "out_degree"
+  ],
+  "node_transforms": {
+    "flops": "log1p",
+    "params": "log1p",
+    "cin": "log2",
+    "cout": "log2",
+    "sin": "log2",
+    "sout": "log2",
+    "kernel": "identity",
+    "in_degree": "identity",
+    "out_degree": "identity"
+  },
+  "node_stats": {
+    "mean": [
+      15.528532845345824,
+      4.9091021357455,
+      6.018362276076292,
+      5.899837133550489,
+      5.990228013029316,
+      5.990228013029316,
+      1.8159609120521172,
+      1.0553745928338762,
+      1.0553745928338762
+    ],
+    "std": [
+      3.867493266327523,
+      5.5614170384504105,
+      1.7924385685239932,
+      1.887874899115985,
+      1.667343636275918,
+      1.667343636275918,
+      1.9032817462575542,
+      0.31806946121204405,
+      0.31806946121204416
+    ]
+  },
+  "mlp_numeric_features": [
+    "total_flops",
+    "total_params"
+  ],
+  "mlp_transforms": {
+    "total_flops": "log1p",
+    "total_params": "log1p"
+  },
+  "mlp_stats": {
+    "mean": [
+      22.251808408084752,
+      14.68464976579495
+    ],
+    "std": [
+      2.2265310756479404,
+      2.0604634314832735
+    ]
+  },
+  "edge_features": [
+    "tensor_volume",
+    "is_skip"
+  ],
+  "edge_transforms": {
+    "tensor_volume": "log1p_then_zscore",
+    "is_skip": "binary_unchanged"
+  },
+  "edge_volume_stats": {
+    "mean": [
+      12.458486289562073
+    ],
+    "std": [
+      1.9653089654369829
+    ]
+  },
+  "mlp_input_dim": 28,
+  "gnn_node_feature_dim": 20,
+  "gnn_shape": [
+    50,
+    20
+  ],
+  "gnn_adjacency_shape": [
+    50,
+    50
+  ],
+  "gat_node_feature_dim": 18,
+  "gat_edge_feature_dim": 2,
+  "gnn_categories": [
+    "None",
+    "Global",
+    "Concat",
+    "Conv",
+    "ConvTranspose",
+    "MaxPool",
+    "Relu"
+  ],
+  "gat_categories": [
+    "Concat",
+    "Conv",
+    "ConvTranspose",
+    "MaxPool",
+    "Relu"
+  ],
+  "condition_features": [
+    "fps_18",
+    "fps_35",
+    "impl_on_chip",
+    "impl_off_chip"
+  ],
+  "condition_transform": "one_hot_unchanged",
+  "condition_placement": {
+    "mlp": "last 4 entries",
+    "gnn": "last 4 entries of the global node and every real node; zero on padding rows",
+    "gatv2": "last 4 entries of every node"
+  },
+  "fps_options": [
+    18,
+    35
+  ],
+  "implementation_modes": [
+    "on_chip",
+    "off_chip"
+  ],
+  "impl_codes": {
+    "on_chip": 0,
+    "off_chip": 1
+  },
+  "uid_format": "<idx>_<fps>_<impl>",
+  "normalization_scope": "generated architecture set, one entry per architecture",
+  "note": "Statistics use architecture-derived inputs only; no measured hardware target values are used."
+}

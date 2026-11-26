@@ -13,94 +13,114 @@
 # limitations under the License.
 """SustainML FPGA Predictor Adapter Implementation."""
 
-import numpy as np
-import hashlib, os
+import hashlib
+import json
+import os
+import threading
 
-from .vendor.sustain_ml_predictor.predictor import predict, get_denormalizer  # Vendored DFKI code
+from .vendor.sustain_ml_predictor.predictor import (  # Vendored DFKI code
+    DEFAULT_FPS, DEFAULT_IMPLEMENTATION, FPS_OPTIONS, IMPLEMENTATION_MODES, Predictor, UNetGraph)
 
 HERE = os.path.dirname(__file__)
 PREDICTOR_HOME = os.path.join(HERE, "vendor", "sustain_ml_predictor")
+UNET_MODELS_DIR = os.path.join(PREDICTOR_HOME, "unet_models")
 DEFAULT_DEVICE = "xczu19eg-ffvb1517-2-i"
 DEFAULT_DEVICE_DIR = os.path.join(PREDICTOR_HOME, DEFAULT_DEVICE)
+
+_lock = threading.Lock()
+_predictor = None   # DFKI's 9 surrogates, loaded once on the first FPGA request
+_measured = {}      # (fps, implementation) -> U-Net files DFKI measured under that condition
+
+
+def _get_predictor():
+    global _predictor
+    with _lock:
+        if _predictor is None:
+            _predictor = Predictor()
+        return _predictor
+
+
+def _measured_models(fps, implementation):
+    """The U-Nets of unet_models/ that DFKI measured at that frame rate and implementation. A U-Net
+    is missing from a condition when it did not fit on the FPGA under it (over-utilization)."""
+    key = (int(fps), implementation)
+    with _lock:
+        if key not in _measured:
+            path = os.path.join(DEFAULT_DEVICE_DIR, f"measurements_{key[0]}fps_{implementation}.jsonl")
+            names = set()
+            if os.path.isfile(path):
+                with open(path, encoding="utf-8") as f:
+                    names = {json.loads(line)["model_file"] for line in f if line.strip()}
+            _measured[key] = names
+        return _measured[key]
+
 
 def _hash_file(path: str) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1<<20), b""):
+        for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
 
+
 def predict_latency_energy(onnx_model_path: str,
-                          device: str = DEFAULT_DEVICE,
-                          stats_file: str = None) -> dict:
+                           fps: int = DEFAULT_FPS,
+                           implementation: str = DEFAULT_IMPLEMENTATION) -> dict:
     """
-    Latency, power and energy of a U-Net on the FPGA board, predicted by the models DFKI trained on
-    their measurements of the U-Nets in unet_models/:
-      - predictor_model_latency.onnx
-      - predictor_model_energy_dynamic.onnx
-      - predictor_model_energy_board_runtime.onnx
+    Latency, power and energy of a U-Net on the FPGA board, predicted by the surrogates DFKI trained
+    on their measurements of the U-Nets in unet_models/ (vendor/sustain_ml_predictor/predictors).
+
+    The FPGA design of a U-Net depends on the frame rate it targets, fps (18 or 35), and on where it
+    keeps the skip connections, implementation ("on_chip" or "off_chip" memory); by default 35 FPS
+    and off-chip, the default of DFKI's predictor. The latency is the time per frame of that design
+    (1 / achieved FPS).
 
     It returns the latency and the model's power and energy: the board's extra power while it runs
-    the model (energy_dynamic: board running minus board idle), as for every hardware in
-    SustainML. The board's own power while running, idle included (energy_board_runtime), is
-    returned too, for reference.
+    the model (dynamic energy: board running minus board idle), as for every hardware in
+    SustainML. The board's own power while running, idle included (total energy), is returned
+    too, for reference, with the FPGA resources of the design.
+
+    Raises ValueError for a U-Net outside the design space the surrogates were trained on (or not
+    exported like the U-Nets of unet_models/), or for an unknown fps or implementation.
     """
-    if stats_file is None:
-        stats_file = os.path.join(PREDICTOR_HOME, device, "unet_models_stats.json")
+    if int(fps) not in FPS_OPTIONS:
+        raise ValueError(f"fps must be one of {FPS_OPTIONS}, got {fps!r}")
+    if implementation not in IMPLEMENTATION_MODES:
+        raise ValueError(f"implementation must be one of {IMPLEMENTATION_MODES}, got {implementation!r}")
+    fps = int(fps)
 
-    device_dir = DEFAULT_DEVICE_DIR if device == DEFAULT_DEVICE else os.path.join(PREDICTOR_HOME, device)
+    predictor = _get_predictor()
+    unet = UNetGraph(onnx_model_path)
+    pred = predictor.predict(unet, fps, implementation)
 
-    lat_path = os.path.join(device_dir, "predictor_model_latency.onnx")
-    edyn_path = os.path.join(device_dir, "predictor_model_energy_dynamic.onnx")
-    eboard_path = os.path.join(device_dir, "predictor_model_energy_board_runtime.onnx")
-
-    meas_stats_file = os.path.join(device_dir, "measurements_stats.json")
-
-    for p in (stats_file, lat_path, edyn_path, eboard_path, meas_stats_file):
-        if not os.path.isfile(p):
-            raise FileNotFoundError(f"Missing predictor asset: {p}")
-
-    model_hash = _hash_file(onnx_model_path)
-
-    denorm_latency        = get_denormalizer("latency",            meas_stats_file)
-    denorm_energy_dynamic = get_denormalizer("energy_dynamic",     meas_stats_file)
-    denorm_energy_board   = get_denormalizer("energy_board_runtime", meas_stats_file)
-
-    # Predict latency
-    lat_pred = predict(onnx_model_file=onnx_model_path,
-                        models_stats_file=stats_file,
-                        prediction_model_file=lat_path,
-                        denormalizer=denorm_latency)
-
-    # Predict dynamic energy
-    edyn_pred = predict(onnx_model_file=onnx_model_path,
-                        models_stats_file=stats_file,
-                        prediction_model_file=edyn_path,
-                        denormalizer=denorm_energy_dynamic)
-
-    # Predict board runtime energy
-    eboard_pred = predict(onnx_model_file=onnx_model_path,
-                        models_stats_file=stats_file,
-                        prediction_model_file=eboard_path,
-                        denormalizer=denorm_energy_board)
-
-    # The predictors return the units of the DFKI measurements they were trained on
-    # (measurements.jsonl): latency of a single input in seconds and energy in joules
-    # (energy_board_runtime = power_board_runtime [W] * latency [s])
-    lat_s = float(np.array(lat_pred).reshape(-1)[0])
-    energy_dynamic_J = float(np.array(edyn_pred).reshape(-1)[0])
-    energy_board_J = float(np.array(eboard_pred).reshape(-1)[0])
+    # The surrogates return the units of the DFKI measurements they were trained on: latency in
+    # seconds per frame and energy in joules per frame (total energy = runtime power [W] x latency
+    # [s], dynamic energy = (runtime - idle power) [W] x latency [s])
+    lat_s = pred["latency"]
 
     # Power of the model [W]: the board's extra power while it runs it, from its dynamic energy [J]
-    # and latency [s]. The board's idle power (about 18-21 W in DFKI's measurements) is left out,
-    # as it does not depend on the model. The predictor can return a negative dynamic energy for a
-    # model unlike those it learnt from: counted as 0
-    energy_dynamic_J = max(energy_dynamic_J, 0.0)
+    # and latency [s]. The board's idle power (about 18-21 W in DFKI's measurements) is left out, as it
+    # does not depend on the model. A surrogate can return a negative energy for a model unlike those
+    # it learnt from: counted as 0
+    energy_dynamic_J = max(pred["dynamic_energy"], 0.0)
+    energy_board_J = max(pred["total_energy"], 0.0)
     power_w = energy_dynamic_J / lat_s if lat_s > 0.0 else 0.0
     power_board_runtime_w = energy_board_J / lat_s if lat_s > 0.0 else 0.0
 
+    # Predictions outside the values a surrogate was trained on are less reliable
+    outside_trained_range = []
+    for target, value in pred.items():
+        lo, hi = predictor.trained_range(target)
+        if not lo <= value <= hi:
+            outside_trained_range.append(target)
+
+    in_catalogue = os.path.realpath(os.path.dirname(onnx_model_path)) == os.path.realpath(UNET_MODELS_DIR)
+    measured = in_catalogue and os.path.basename(onnx_model_path) in _measured_models(fps, implementation)
+
     return {
-        "device": device,
+        "device": DEFAULT_DEVICE,
+        "fps": fps,
+        "implementation": implementation,
         "latency_s": lat_s,
         "latency_h": lat_s / 3600.0,  # WP3 expects hours
         "power_w": power_w,
@@ -109,12 +129,20 @@ def predict_latency_energy(onnx_model_path: str,
         "energy_dynamic_Wh": energy_dynamic_J / 3600.0,
         "power_board_runtime_w": power_board_runtime_w,
         "energy_board_runtime_Wh": energy_board_J / 3600.0,
+        # FPGA resources of the design: BRAM36 tiles, LUTs, flip-flops and DSP blocks
+        "fpga_resources": {t: pred[t] for t in ("brams", "luts", "ffs", "dsps")},
+        # MFLOPs per joule of total and of dynamic energy
+        "energy_efficiency_mflop_per_J": {"total": pred["total_energy_efficiency"],
+                                          "dynamic": pred["dynamic_energy_efficiency"]},
+        # Whether the U-Net is one of unet_models/ that DFKI measured under this fps and
+        # implementation (it fitted on the FPGA); False for a U-Net outside the catalogue
+        "measured_by_dfki": measured,
+        "outside_trained_range": outside_trained_range,
         "provenance": {
             "source": "predicted by DFKI's predictors",
-            "stats_file": os.path.relpath(stats_file, HERE),
-            "measurements_stats_file": os.path.relpath(meas_stats_file, HERE),
-            "predictors": ["latency", "energy_dynamic", "energy_board_runtime"],
-            "model_sha256": model_hash,
-            "assets_dir": os.path.relpath(device_dir, HERE),
+            "predictors_dir": os.path.relpath(str(predictor.dir), HERE),
+            "predictors": sorted(pred),
+            "condition": {"fps": fps, "implementation": implementation},
+            "model_sha256": _hash_file(onnx_model_path),
         }
     }

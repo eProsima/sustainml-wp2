@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .fpga_predictor_adapter import predict_latency_energy
+from .fpga_predictor_adapter import predict_latency_energy, DEFAULT_FPS, DEFAULT_IMPLEMENTATION

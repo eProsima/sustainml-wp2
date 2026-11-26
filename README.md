@@ -44,8 +44,10 @@ This repository contains two nodes of the SustainML Framework:
   model on that hardware, in one of three ways:
   - Transformers models on the processing-in-memory and GPU architectures of the UPMEM LLM simulator (`upmem_llm_framework`).
   - YOLO models on the Axelera Edge 130p board, from the measurements of each model on the board (`hw_provider_axelera`).
-  - U-Net models on the FPGA `xczu19eg-ffvb1517-2-i`: the latency and energy predicted by DFKI's predictor, for the
-    217 U-Nets of the catalogue as for any other U-Net (`hw_provider_fpga`).
+  - U-Net models on the FPGA `xczu19eg-ffvb1517-2-i`: the latency, energy and FPGA resources predicted by DFKI's
+    predictor, for the 394 U-Nets of the catalogue and for any other U-Net of the same design space
+    (`hw_provider_fpga`). The FPGA design targets 18 or 35 FPS, with the skip connections kept on-chip or off-chip
+    (`fpga_fps` and `fpga_implementation` in the extra data of the HW constraints, by default 35 FPS, off-chip).
 
 The memory footprint of the models (weights plus working memory) is computed in `model_memory.py`.
 
@@ -66,4 +68,7 @@ It is distributed under the MIT License (`upmem_llm_framework/LICENSE`), Copyrig
 See `upmem_llm_framework/README.md` for the list of local modifications.
 
 The `hw_provider_fpga/vendor/sustain_ml_predictor` directory contains DFKI's U-Net latency and energy predictor, its
-predictor models, and the U-Net models and measurements it was trained on, developed within the SustainML project.
+predictor models, and the U-Net models and measurements it was trained on, developed within the SustainML project
+(see its `README.md`, which also describes DFKI's demo files, not included here).
+`hw_provider_fpga/vendor/sustain_ml_predictor/xczu19eg-ffvb1517-2-i/unet_models_info.jsonl`, the architecture of each
+U-Net shown by the UI, is not part of DFKI's package: `hw_provider_fpga/generate_unet_models_info.py` writes it from the ONNX files.
